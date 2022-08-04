@@ -13,8 +13,9 @@
 		**
 		*First year the firm got a loan
 		*------------------------------------------------------------------------------------------------------------------------------------->>
-			use "$data\inter\Credit Registry_firm-year-level.dta"   if period <= 2018, clear
+			use "$data\inter\Credit Registry_firm-year-level.dta"   if period <= 2015, clear
 				duplicates drop fuid, force			
+				replace first_kcgf = 2013 if first_kcgf != .
 				keep 			fuid first_*			//keep only the firm id and the first year the firm got a loan
 				tempfile 		first_loan				//we need the first year to set up a variable that is equal to 1 for the treatment year and 
 				save 		   `first_loan'				//for the years after that. 
@@ -24,6 +25,10 @@
 		*Credit Registry up to 2018
 		*------------------------------------------------------------------------------------------------------------------------------------->>
 			use  "$data\inter\Credit Registry_firm-year-level.dta"  if period <= 2018, clear
+			
+			bys fuid: egen t = max(num_loans_kcgf)
+			replace num_loans_kcgf = 1 if t > 0 & period >= 2013
+			drop if period > 2015
 			drop first* 
 				tempfile 		loans
 				save 		   `loans'
@@ -32,12 +37,12 @@
 		**
 		*Merging Tax Registry and Credit Registry
 		*------------------------------------------------------------------------------------------------------------------------------------->>
-			use "$data\inter\Tax Registry.dta", clear   					//Turnover = 0 or missing, how to interpret?
-				merge 		1:1 fuid period 	using  `loans', 
+			use "$data\inter\Tax Registry.dta" if period <= 2015, clear   					//Turnover = 0 or missing, how to interpret?
+				merge 1:1 fuid period using  `loans', 
 				
 				**
 				**
-				gen 		 formal = _merge != 2							//firm only foud in credit data -> evidence of informality according to Blerta (Financial Private Sector Specialist WB).
+				gen 		 formal = _merge != 2							//firm only foud in credit data -> evidence of informality 
 				label define formal 0 "Informal" 1 "Formal"	
 				label val 	 formal formal
 				
@@ -47,7 +52,7 @@
 				drop 		_merge	
 				
 				**
-				merge 		m:1 fuid		  	using  `first_loan', nogen 	//identifying the year the firm got its first loan
+				merge 		m:1 fuid		  using  `first_loan', nogen 	//identifying the year the firm got its first loan
 		}		
 			
 
@@ -97,7 +102,7 @@
 				
 				
 				**
-				*-> The variable deathyear come from the Tax Registry dataset. Adjusting variable deathyear as we identify several inconsistences
+				*-> The variable deathyear come from the Tax Registry dataset. Adjusting variable deathyear
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				
 				**
@@ -118,14 +123,14 @@
 				//how the firm close in t if it has sales the year after ???
 				br 			fuid period turnover deathyear 				if period > deathyear & !missing(deathyear) 
 				bys 		fuid: egen A = max(period) 					if turnover != . & turnover!= 0			
-				bys 		fuid: egen max_year_turn = max(A) 															//last year the firm registered sales
-				gen		 	erro  = 1  					 				if  deathyear < max_year_turn					//the firm registered sales in a year after the deathyear, which is an evidence of error. 
-				replace 	deathyear = . 			  				 	if erro == 1									//firms that had death rate but that are not closed. 
+				bys 		fuid: egen max_year_turn = max(A) 				//last year the firm registered sales
+				gen		 	erro  = 1  					 				if  deathyear < max_year_turn	//the firm registered sales in a year after the deathyear, which is an evidence of error. 
+				replace 	deathyear = . 			  				 	if erro == 1				//firms that had death rate but that are not closed. 
 				drop 		A max_year_turn erro
 
 				
 				//firm is closed in tax registry but open in credit registry
-				gen 		erro = 1 if formal == 0 & period > deathyear												//formal = 0 means that the firm is only in the credit registry data (so the firm has a loan)
+				gen 		erro = 1 if formal == 0 & period > deathyear			//formal = 0 means that the firm is only in the credit registry data (so the firm has a loan)
 				bys 		fuid: egen max_error = max(erro)
 				replace 	deathyear = . if max_error == 1
 				drop 		erro
@@ -151,18 +156,18 @@
 				**
 				*EUR 2021
 				*---------------------------------------------------------------------------------------------------------------------------------->>
-				local 		ppi2021 100
-				local 		ppi2020 96.75858732
-				local 		ppi2019 96.56545641
-				local 		ppi2018 94.0450491
-				local 		ppi2017 93.06783681
-				local 		ppi2016 91.70148469
-				local 		ppi2015 91.45455738
-				local 		ppi2014 91.95109329
-				local 		ppi2013 91.55739648
-				local 		ppi2012 89.9650157
-				local 		ppi2011 87.78787637
-				local 		ppi2010 81.78486712
+				local ppi2021 100
+				local ppi2020 96.75858732
+				local ppi2019 96.56545641
+				local ppi2018 94.0450491
+				local ppi2017 93.06783681
+				local ppi2016 91.70148469
+				local ppi2015 91.45455738
+				local ppi2014 91.95109329
+				local ppi2013 91.55739648
+				local ppi2012 89.9650157
+				local ppi2011 87.78787637
+				local ppi2010 81.78486712
 				keep if 	period >= 2010
 				forvalues 	period  = 2010(1)2021 {
 					foreach var of varlist turnover salaries exports_amount imports_amount {
@@ -172,9 +177,6 @@
 				}				
 				drop turnover salaries exports_amount imports_amount
 				
-				
-				**
-				*Outliers by firms' size
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				egen group_sme = group(sme)
 				foreach var of varlist  turnover_r salaries_r exports_amount_r imports_amount_r  	{
@@ -185,7 +187,7 @@
 				}				
 								
 				**
-				*Productivity -> sales per employee
+				*Productivity
 				*---------------------------------------------------------------------------------------------------------------------------------->>
 				gen 	productivity_r = turnover_r/employees 	//sales divided by the number of employees
 				gen 	wages_worker_r = salaries_r/employees  	//total wages divided by the number of employees
@@ -201,10 +203,7 @@
 				**
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				gen 		main_dataset = 1			//firms either in tax registry or in credit data
-				
-				//we do not have a balance panel. if the firm closed in 2016, we will not have information for the firm in 2017/2018, etc.
-				//we need to set up a balanced panel.
-				
+
 				
 				**
 				*Saving some important variables at firm level to merge with the balanced panel
@@ -227,52 +226,53 @@
 				merge 			m:1 fuid using `data', nogen				
 				
 				drop 								if period 		< 	fyear_main_dataset				//keeping only years after the first year the we saw the firm in the main dataset
-				replace 		main_dataset = 0	if main_dataset == .								//main_dataset = 0, rows created to input 0 to num employees, productivity and sales for firms that closed
+				replace 		main_dataset = 0	if main_dataset == .								//main_dataset = 0, rows created to input 0 to num employees, productivity and sales for firms that exited. 
 			
 				label define 	main_dataset 	1 "Tax/Credit Registry" 0 "Created to add 0s to outcome variables of exited firms"
 				label val 		main_dataset main_dataset
 				
-				//to have a better idea of the effect of the KCGF, we input zero values for the following variables for the years after the firm closed:
-				*employees, productivity and turnover. If we dont do that, we underestimate the impact of the fund. 
-			
-			
+
 				**
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				sort 			fuid period
 				br 				fuid period  main_dataset deathyear turnover* employees productivity
 				
-				foreach 	var of varlist sectionid sectionid1-sectionid21 divisionid activityid size size_creditdata municipalityid  ethnicity {
-				replace `var' = `var'[_n-1] 	if main_dataset == 0 	& `var'[_n-1] != .  & fuid[_n] == fuid[_n-1]		//to run the regressions with the exited firms, we need the variables size, economic sector, and municipality to use as control. 
+				foreach var of varlist sectionid sectionid1-sectionid21 divisionid activityid size size_creditdata municipalityid  ethnicity {
+					replace `var' = `var'[_n-1] if main_dataset == 0 	& `var'[_n-1] != .  & fuid[_n] == fuid[_n-1]		//to run the regressions with the exited firms, we need the variables size, economic sector, and municipality. 
 				}
-				replace sme   =   sme[_n-1] 	if main_dataset == 0 	&   sme[_n-1] != "" & fuid[_n] == fuid[_n-1]		
+					replace sme   =   sme[_n-1] if main_dataset == 0 	&   sme[_n-1] != "" & fuid[_n] == fuid[_n-1]		//to run the regressions with the exited firms, we need the variables size, economic sector, and municipality. 
+
 					
-				foreach var of varlist turnover_r employees productivity_r {												//replacing the vars with 0 for firms that closed. 
-				replace `var' = 0				if main_dataset == 0
+				foreach var of varlist turnover_r employees productivity_r {												//replacing the vars with 0 for firms that exited. 
+					replace `var' = 0			if main_dataset == 0
 				}
-
-				replace 	num_loans 		= 0 if main_dataset == 0
-				replace 	num_loans_kcgf  = 0 if main_dataset == 0
-
+					
 					
 				**
 				*Identifying if the firm is active or inactive in that year
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen 		 active = (period <= deathyear | deathyear == . ) | formal == 0 	//informal = 1 means that the firm was only found in credit data
+				gen 		 active = (period <= deathyear | deathyear == . ) | formal == 0 //informal = 1 means that the firm was only found in credit data
 				replace 	 active = 0 if main_dataset == 0
 				label define active 1 "Active firm in year t" 0 "Closed firm in year t"
 				label val    active active
-				gen 		 inactive = active == 0
-				bys  		 fuid: egen a = min(period) if inactive == 1							//identifying if the company closed definitely
-				bys  		 fuid: egen b = max(period) if   active == 1
-				bys  		 fuid: egen min_inactive = min(a)
-				bys  		 fuid: egen max_active   = max(b)
-				gen 		 closed_definitely = min_inactive > max_active  & !missing(min_inactive) & !missing(max_active) & period >= min_inactive
-				sort 		 fuid period
-				br   		 fuid period main_dataset  deathyear  active  min_inactive max_active closed_definitely
+				gen 		inactive = active == 0
 				
-							
+				
+				//identifying if the company closed definitely
+				bys  		fuid: egen a = min(period) if inactive == 1
+				bys  		fuid: egen b = max(period) if   active == 1
+				bys  		fuid: egen min_inactive = min(a)
+				bys  		fuid: egen max_active = max(b)
+				gen 		closed_definitely = min_inactive > max_active  & !missing(min_inactive) & !missing(max_active) & period >= min_inactive
+				sort 		fuid period
+				br   		fuid period main_dataset  deathyear  active  min_inactive max_active closed_definitely
+				
+				*------------------------------------------------------------------------------------------------------------------------------>>
+				replace 	num_loans 		= 0 if main_dataset == 0
+				replace 	num_loans_kcgf  = 0 if main_dataset == 0
+
 				**
-				*Lag values
+				**
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				sort fuid period
 				foreach var of varlist sme size wages_worker_r turnover_r productivity_r employees num_loans  {
@@ -289,223 +289,126 @@
 				
 				
 				**
-				*Treatment status
+				**
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				gen 		has_loan = loanamount != . & loanamount != 0
 				gen 		has_kcgf = num_loans_kcgf 	   > 0  & !missing(num_loans_kcgf)
 				gen 		no_loan	 = has_loan == 0 & has_kcgf == 0
+				
+				**
+				*------------------------------------------------------------------------------------------------------------------------------>>
 				bys 		fuid: egen A = max(has_loan)
 				bys 		fuid: egen B = max(has_kcgf )
 				gen 		treated_loan = A == 1
 				gen 		treated_kcgf = B == 1
 				drop A B
 				
-				
 				**
-				*Dummy for after treatment 
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				gen 		after_loan 	 = period >= first_loan
 				gen 		after_kcgf 	 = period >= first_kcgf
 
 				
 				**
-				**Whether before 2016 (when KCGF was launched) the firm had access to the credit market
+				**Whether before 2015, the firm got a loan not covered by KCGF or a loan covered by KCGF
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen	 		had_loan_up2015 =  	    ((num_loans != 0 & !missing(num_loans)) 	   | ///
-												(lag1_num_loans != 0 & !missing(lag1_num_loans))   | ///
-												(lag2_num_loans != 0 & !missing(lag2_num_loans))   | ///
-												(lag3_num_loans != 0 & !missing(lag3_num_loans))   | ///
-												(lag4_num_loans != 0 & !missing(lag4_num_loans)))   & period == 2015 
-				replace  	had_loan_up2015  		= . 			if period != 2015	
-				gen 	 	didnothave_loan_up2015 	= 1 			if had_loan_up2015 == 0	
-				replace  	didnothave_loan_up2015  = 0 			if had_loan_up2015 == 1						
+				gen	 	had_loan_up2015 =  	    ((num_loans != 0 & !missing(num_loans)) 	   | ///
+											(lag1_num_loans != 0 & !missing(lag1_num_loans))   | ///
+											(lag2_num_loans != 0 & !missing(lag2_num_loans))   | ///
+											(lag3_num_loans != 0 & !missing(lag3_num_loans))   | ///
+											(lag4_num_loans != 0 & !missing(lag4_num_loans)))   & period == 2013 
+											
+				egen 	 number_loans_up2015 = rsum(*num_loans) 	if period == 2013
+				su	     number_loans_up2015						if period == 2013, detail
+				replace  number_loans_up2015 = . 					if period == 2013 & number_loans_up2015 > r(p95)
 				
-				label 		define 		had_loan_up2015  0 "Firm without loan between before 2016" 1 "Firm with loan before 2016"		
-				label 		val 		had_loan_up2015  had_loan_up2015
+											
+				replace had_loan_up2015  		= . 				if period != 2013	
+				gen 	didnothave_loan_up2015 	= 1 				if had_loan_up2015 == 0	
+				replace didnothave_loan_up2015  = 0 				if had_loan_up2015 == 1	
 				
-				egen 	 	number_loans_up2015 = rsum(*num_loans) 	if period == 2015
-				
-				foreach 	sme in 1 2 3 4							  {
-				su	     	number_loans_up2015						if group_sme == `sme' & period == 2015, detail
-				replace  	number_loans_up2015 = . 				if group_sme == `sme' & period == 2015 & number_loans_up2015 > r(p95)
-				}
+				label 	define 		had_loan_up2015  0 "Firm without loan between before 2016" 1 "Firm with loan before 2016"		
+				label 	val 		had_loan_up2015  had_loan_up2015
 
-				
-				**
-				**Number of loans in last 5 years (credit history)
-				*------------------------------------------------------------------------------------------------------------------------------>>
-				egen 		number_loans_last5years = rsum(lag1_num_loans lag2_num_loans lag3_num_loans lag4_num_loans lag5_num_loans)
-				
-				foreach 	sme in 1 2 3 4							  {
-				su	     	number_loans_last5years					if group_sme == `sme', detail
-				replace  	number_loans_last5years					if group_sme == `sme' & number_loans_last5years > r(p95)
-				}
-				gen 		sq_number_loans_last5years =  number_loans_last5years*number_loans_last5years
-				gen 		has_credit_history = number_loans_last5years > 0
-				replace 	has_credit_history = . if missing(number_loans_last5years)
+				sort 	fuid period
+				br 		fuid period active *num_loans* had_loan_up2015 if period == 2013
 				
 				
 				**
 				**Type of firm after 2015
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen 		A  =  1 if num_loans 		!= 0 & !missing(num_loans	  ) & period > 2015
-				replace 	A  =  2 if num_loans_kcgf 	!= 0 & !missing(num_loans_kcgf) & period > 2015
-				replace 	A  =  0 if num_loans		== 0 & period > 2015
+				gen 	A  =  1 if num_loans 		!= 0 & !missing(num_loans	  ) & period > 2013
+				replace A  =  2 if num_loans_kcgf 	!= 0 & !missing(num_loans_kcgf) & period > 2013
+				replace A  =  0 if num_loans		== 0 & period > 2015
 				
-				sort 	 	fuid period
-				bys 	 	fuid: egen  type_firm_after2015 = max (A)
-				br 		 	fuid main_dataset period num_loans* A type_firm_after2015
-				drop 	 	A
-				label	 	define  type_firm_after2015 0 "No loan (2016-2018)" 1 "Loan (2016-2018)" 2 "KCGF loan (2016-2018)" 
-				label	 	val 	type_firm_after2015  type_firm_after2015 
+				sort 	 fuid period
+				bys 	 fuid: egen  type_firm_after2015 = max (A)
+				br 		 fuid main_dataset period num_loans* A type_firm_after2015
+				drop 	 A
+				label	 define  type_firm_after2015 0 "No loan (2016-2018)" 1 "Loan (2016-2018)" 2 "KCGF loan (2016-2018)" 
+				label	 val 	 type_firm_after2015  type_firm_after2015 
 				
 
 				**
-				**Type of firm panel
-				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen 		A  =  1 if num_loans 		!= 0 & !missing(num_loans	  )
-				replace 	A  =  1 if num_loans_kcgf 	!= 0 & !missing(num_loans_kcgf) 
-				replace 	A  =  0 if num_loans		== 0 
-				
-				sort 	 	fuid period
-				bys 	 	fuid: egen  type_firm_panel = max (A)
-				br 		 	fuid main_dataset period num_loans* A  type_firm_panel
-				drop 		 A
-				label	 	define  type_firm_panel 0 "No loan" 1 "Loan"
-				label	 	val 	 type_firm_panel type_firm_panel 
-				
-				
-				**
 				**Firm closes after 2015 
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen					willclose_after2015 = deathyear   != . & deathyear > 2015
-				replace 			willclose_after2015 = . 										if period != 2015
+				gen					willclose_after2015 = deathyear   != . & deathyear > 2013
+				replace 			willclose_after2015 = . 										if period != 2013
 				gen 				notclose_after2015  = willclose_after2015  == 0
-				replace 			notclose_after2015  = . 										if period != 2015
-				label 		define  willclose_after2015 0 "Firm remains open (2016-2018)" 1 "Firm exited (2016-2018)" 
-				label 		val		willclose_after2015 willclose_after2015
+				replace 			notclose_after2015  = . 										if period != 2013
+				label 	define 	 	willclose_after2015 0 "Firm remains open (2016-2018)" 1 "Firm exited (2016-2018)" 
+				label 	val		 	willclose_after2015 willclose_after2015
 				 
 				 
 				*Firms with loans by formal
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				gen 		has_loan_informal 	= has_loan == 1 & formal == 0
-				gen 		has_kcgf_informal 	= has_kcgf == 1 & formal == 0
-				gen 		no_loan_informal    = no_loan  == 1 & formal == 0
+				gen 	has_loan_informal 	= has_loan == 1 & formal == 0
+				gen 	has_kcgf_informal 	= has_kcgf == 1 & formal == 0
+				gen 	no_loan_informal    = no_loan  == 1 & formal == 0
 				
 				
 				*Squared values
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				global 		covars firms_age  productivity_r wages_worker_r employees lag* num_loans number_loans_up2015
-				foreach 	var of varlist $covars {
-					gen 	sq_`var' = `var'^2 
+				global covars firms_age  productivity_r wages_worker_r employees lag* num_loans number_loans_up2015
+				foreach var of varlist $covars {
+					gen sq_`var' = `var'^2 
 				}
 				
 
 				*Quantiles productivity
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				
-				forvalues 	period = 2010(1)2021 {
-				cap noi quantiles productivity_r if period == `period' & active == 1 ,  n(10) gencatvar(qua_productivity_r`period')
-				cap noi quantiles turnover_r 	 if period == `period' & active == 1 ,  n(10) gencatvar(qua_turnover_r`period')
-				}
+				cap noi quantiles productivity_r if period == 2013 & active == 1 & sme == "a.1-9" ,  n(10) gencatvar(qua_productivity_r)
+				cap noi quantiles turnover_r 	 if period == 2013 & active == 1 & sme == "a.1-9" ,  n(10) gencatvar(qua_turnover_r)
 				
 				
-				
-				*Average growth in the last years
-				*------------------------------------------------------------------------------------------------------------------------------>>
-				foreach 	var of varlist productivity_r employees turnover_r {
-				gen 		avgrowth_`var' = (((`var'/lag3_`var')^(1/3)) - 1)*100  if main_dataset == 1							& lag3_`var' != 0 		
-				replace 	avgrowth_`var' = (((`var'/lag2_`var')^(1/2)) - 1)*100  if main_dataset == 1 & avgrowth_`var' == .  	& lag2_`var' != 0 
-				replace 	avgrowth_`var' = (((`var'/lag1_`var')^(1/1)) - 1)*100  if main_dataset == 1 & avgrowth_`var' == .	& lag1_`var' != 0 
-				su 			avgrowth_`var', detail
-				replace 	avgrowth_`var' = . if avgrowth_`var' <= r(p5) | avgrowth_`var' >= r(p95)
-				}
-				
-				
-				**
-				*Labels
-				*------------------------------------------------------------------------------------------------------------------------------>>
-				label 		var firms_age					"Firms' age'"
-				label 		var employees					"Num. employees"
-				label 		var turnover_r					"Sales, in 2021 EUR"
-				label 		var productivity_r				"Productivity, in 2021 EUR"
-				label 		var wages_worker_r				"Average wage, in 2021 EUR"
-				label 		var import_tx					"Firm imports"
-				label 		var export_tx					"Firm exports"
-				label 		var number_loans_up2015			"Num. loans 2010-2015"
-				label 		var had_loan_up2015				"Firm access to credit 2010-2015"
+				label var firms_age						"Firms' age'"
 
+				label var employees						"Num. employees"
+
+				label var turnover_r					"Sales, in 2021 EUR"
+
+				label var productivity_r				"Productivity, in 2021 EUR"
+
+				label var wages_worker_r				"Average wage, in 2021 EUR"
+
+				label var import_tx						"Firm imports"
+
+				label var export_tx						"Firm exports"
+
+				label var number_loans_up2015			"Num. loans 2010-2015"
+
+				label var had_loan_up2015				"Firm access to credit 2010-2015"
+
+				gen nomissingdep = 1 if employees != . & productivity_r != . & turnover_r != .
+					
+			
 				**
 				**
 				sort 	fuid period
-				*compress
+				compress
+			
 				save 			"$data\final\firm_year_level.dta", replace
 		}		
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
 				
 				/*
 				

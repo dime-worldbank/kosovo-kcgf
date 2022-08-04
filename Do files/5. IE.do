@@ -1,6 +1,5 @@
 
 	
-	
 	*A*
 	*Variables selected as good predictors of the probability of getting a KCGF funded loan, machine learning models
 	*________________________________________________________________________________________________________________________________________*
@@ -93,12 +92,10 @@
 	*B*
 	*Propensity score matching using the vector of covariates suggested by the machine learning and testing parallel trends of the matched sample
 	*________________________________________________________________________________________________________________________________________*
+
+	foreach model in ols lasso forest xgboost 	{  //ols lasso ridge  forest xgboost
 		
-		
-	*----------------------------------------------------------------------------------------------------------------------------------------*		
-	foreach model in ols lasso ridge  forest xgboost vivian  	{  //ols lasso ridge  forest xgboost
-		
-		foreach comparison in 0 1  					 			{	//0 1 //1	//0-> firms with no loans, 1-> firms with loans
+		foreach comparison in  1  					 			{	//0 1 //1	//0-> firms with no loans, 1-> firms with loans
 			
 			**
 			*1* PSM
@@ -109,7 +106,7 @@
 				**
 				**
 				*----------------------------------------------------------------------------------------------------------------------------*
-				keep 	if main_dataset == 1   & period == 2015 				//active firms in 2015
+				keep 	if main_dataset == 1   & period == 2015			//active firms in 2015
 				keep 	if sme 			== "a.1-9"	//micro, small or medium firms
 				keep 	if inlist(type_firm_after2015,`comparison', 2) 							//keeping only comparison group 0 or 1 and type_firm_2015 = 2 (which means the ones that had access to KCGF)
 				keep    if active == 1
@@ -228,7 +225,7 @@
 			*****----------------------->>>>
 			{
 			***ATTENTION
-			foreach main_dataset in 0 1 {
+			foreach main_dataset in 0  {
 				
 				 use "$data\final\firm_year_level.dta", clear
 					
@@ -346,16 +343,16 @@
 	}		
 		
 
-	/*	
+		
 	*C*
 	*Probability of receiving the treatment versus firms' characteristics
 	*________________________________________________________________________________________________________________________________________*
-	{	
-		
+	{
+	
 		matrix results = (0,0,0,0,0,0)
 		
 		foreach comparison in 0 1 {
-			use "$data\inter\matching_models\matching_forest_`comparison'.dta", clear  
+			use "$data\inter\matching_models\matching_xgboost_`comparison'.dta", clear  
 				local xvar = 1
 				foreach variable in employees qua_productivity_r qua_turnover_r number_loans_up2015 {
 					levelsof `variable', local(`variable'_list) 
@@ -446,58 +443,189 @@
 			graph export "$output\figures\psm versus sales.png", as(png) replace
 			graph combine a40.gph a41.gph, xsize(10) ysize(5) title("Probability of treatment and number of loans between 2010-2015", color(black)) graphregion(fcolor(white)) 
 			graph export "$output\figures\psm versus number of loans.png", as(png) replace
-		}
 		*/	
+		}
+			
 		
-	
 	
 	*D*
 	*Regressions
 	*________________________________________________________________________________________________________________________________________*
 	{	
-			foreach variable in l_productivity_r l_turnover_r l_employees closed_definitely  {	 //productivity_r turnover_r employees		
+	    matrix results = (0,0,0,0,0,0,0,0)		//variable, comparison, model, sample, att, lower bound, upper bound, outcome average. 
+			local nvar = 1
+			foreach variable in  turnover_r employees productivity_r closed_definitely  {	 //productivity_r turnover_r employees	
 				estimates clear	
 				foreach comparison in 1 {  //0 1
 					local nmodel = 1
-					foreach model in ols lasso ridge forest xgboost vivian		 				{  //ols lasso ridge forest xgboost
+					foreach model in ols lasso forest xgboost 	 				{  //ols lasso ridge forest xgboost
 				
 						use "$data\final\firm_year_level.dta", clear
 						replace closed_definitely = closed_definitely*100
 							merge m:1 fuid using  "$data\inter\matching_models\matching_`model'_`comparison'.dta", keep(3) nogen keepusing(_weight _weight2 _support) 
 							keep 		if _support == 1	& _weight  != .				
 				
-							foreach sample in 1 2 {  //1 2
+							foreach sample in 2 {  //1 2
 								xtset fuid period
 								preserve
 								if 		`sample' == 1 keep if main_dataset == 1
-							    eststo: xtreg 	`variable'  after_kcgf i.period  [aw = _weight], fe cluster(fuid)
-								local  ATT  = el(r(table),1,1)																					//average treatment effect
-								*eststo	 model`comparison'`nmodel'`sample'
-								
-								/*
-								if "`variable'" != "inactive" & "`variable'" != "closed_definitely" {
-								su 		`variable' 			if type_firm_after2015 == 2 		   & period == 2015
-								}
+							    xtreg 	`variable'  after_kcgf i.period  [aw = _weight] if period >= 2015 , fe cluster(fuid)
+								eststo	 model`comparison'`nmodel'`sample'
+								local  ATT 			 = el(r(table),1,1)	
+								local  lowerbound 	 = el(r(table),5,1)
+								local  upperbound    = el(r(table),6,1)
+								su 		`variable' 			if type_firm_after2015 == 2  & period == 2015 [aw = _weight], detail
 								scalar 	 media			   = r(mean)
 								estadd   scalar media      = media:     model`comparison'`nmodel'`sample'
 								scalar 	 effect			   = `ATT'/media
 								estadd   scalar effect     = effect: 	model`comparison'`nmodel'`sample'
-								*/
+								
+								matrix results = results \ (`nvar',`comparison', `nmodel', `sample', `ATT',`lowerbound', `upperbound', media)
 								restore
 							}	
 						local nmodel = `nmodel' + 1	
 					}
 				}
-				if "`variable'" == "l_productivity_r" {
-					estout * using "$output/Tables.xls", keep(after*) cells(b(star fmt(2)) se(fmt(2)) ci(par fmt(1))) 	starlevels(* 0.10 ** 0.05 *** 0.01)  stats(N r2, fmt(%9.0g %9.3f) labels("N. obs" "R2" ))  replace
+				if "`variable'" == "turnover_r" {
+					estout * using "$output/Tables.xls", keep(after*) cells(b(star fmt(2)) se(fmt(2)) ci(par fmt(1))) 	starlevels(* 0.10 ** 0.05 *** 0.01)  stats(N r2 media effect, fmt(%9.0g %9.3f) labels("N. obs" "R2" ))  replace
 				}
 				else{
-					estout * using "$output/Tables.xls", keep(after*) cells(b(star fmt(2)) se(fmt(2)) ci(par fmt(1))) 	starlevels(* 0.10 ** 0.05 *** 0.01)  stats(N r2, fmt(%9.0g %9.3f) labels("N. obs" "R2" )) append
+					estout * using "$output/Tables.xls", keep(after*) cells(b(star fmt(2)) se(fmt(2)) ci(par fmt(1))) 	starlevels(* 0.10 ** 0.05 *** 0.01)  stats(N r2 media effect, fmt(%9.0g %9.3f) labels("N. obs" "R2" )) append
 				}
+			local nvar = `nvar' + 1	
 			}
 		}	
+
 		
 		
+	*E*
+	*Figures
+	*________________________________________________________________________________________________________________________________________*
+	{
+		
+		clear
+		svmat results
+		drop in 1
+		rename (results1-results8) (variable comparison_group model sample att lower upper average_out)
+		
+	
+		foreach var of varlist att lower upper {
+		    replace `var' = (`var'/average_out)*100 if average_out != 0
+		}
+		
+		replace model = 5 if variable == 3 & model == 1
+		replace model = 6 if variable == 3 & model == 2
+		replace model = 7 if variable == 3 & model == 3
+		replace model = 8 if variable == 3 & model == 4
+		replace model = 5 if variable == 4 & model == 1
+		replace model = 6 if variable == 4 & model == 2
+		replace model = 7 if variable == 4 & model == 3
+		replace model = 8 if variable == 4 & model == 4
+ 
+ 
+			*
+			*Sales and productivity
+						twoway    bar att model if model == 1 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+							   || bar att model if model == 3 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+							   || bar att model if model == 5 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 6 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
+							   || bar att model if model == 7 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 8 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
+						xtitle("", size(medsmall)) 											  																											///
+						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
+						xlabel(1 `" "Model 1" "' 2 `" "Model 2" "' 3 `" "Model 3" "' 4 `" "Model4" "' 5 `" "Model 1" "' 6 `" "Model 2" "' 7 `" "Model 3" "' 8 `" "Model4" "', labsize(small) ) 									///
+						xscale(r()) 																																								///
+						xline(4.5, lpattern(shortdash) lcolor(cranberry)) ///
+						title(, size(medsmall) color(black)) 																																			///
+						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
+						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
+						legend(order(1 "Estimate %, sales" 7 "Estimate %, productivity" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
+						text(35 2.5 "Increase in sales, %") 																																							///
+						text(35 6.5 "Increase in productivity, %") 																																						///
+						ysize(4) xsize(7)  ///
+						note("", color(black) fcolor(background) pos(7) size(small)) 
+						graph export "$output/figures/results1.pdf", as(pdf) replace
+			
+			*
+			*Employees and closing
+
+						
+						twoway    bar att model if model == 1 & variable == 2, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 2, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 2, lcolor(navy)	///
+							   || bar att model if model == 3 & variable == 2, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 2, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 2, lcolor(navy)	///
+							   || bar att model if model == 5 & variable == 4, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 6 & variable == 4, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 4, lcolor(navy)	///
+							   || bar att model if model == 7 & variable == 4, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 8 & variable == 4, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 4, lcolor(navy)	///
+						xtitle("", size(medsmall)) 											  																											///
+						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
+						xlabel(1 `" "Model 1" "' 2 `" "Model 2" "' 3 `" "Model 3" "' 4 `" "Model4" "' 5 `" "Model 1" "' 6 `" "Model 2" "' 7 `" "Model 3" "' 8 `" "Model4" "', labsize(small) ) 									///
+						xscale(r()) 																																								///
+						xline(4.5, lpattern(shortdash) lcolor(cranberry)) ///
+						title(, size(medsmall) color(black)) 																																			///
+						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
+						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
+						legend(order(1 "Estimate %, employees" 7 "Estimate pp, closing" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
+						text(22 2.5 "Increase in employees, %") 																																							///
+						text(22 6.8 "Decrease in probability of closing, pp") 																																						///
+						ysize(4) xsize(7)  ///
+						note("", color(black) fcolor(background) pos(7) size(small)) 
+						graph export "$output/figures/results2.pdf", as(pdf) replace
+		}				
+		
+		
+		
+	*F*
+	*Balance test after matching
+	*________________________________________________________________________________________________________________________________________*
+						
+	foreach model in ols lasso ridge forest xgboost 	{  //ols lasso ridge  forest xgboost
+						
+		use "$data\final\firm_year_level.dta" if period == 2015, clear
+
+			merge m:1 fuid using  "$data\inter\matching_models\matching_`model'_1.dta", keep(3) nogen keepusing(_weight _weight2 _support) 
+			gen micro =  sme == "a.1-9" 
+
+			keep 		if _support == 1	& _weight  != .				
+			iebaltab firms_age employees micro  turnover_r  productivity_r wages_worker_r import_tx export_tx number_loans_up2015 had_loan_up2015  [aw=_weight] , format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Balance after matching_`model'.xls") 	rowvarlabels replace 
+
+	}	
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+		/*
 		
 		
 		
@@ -514,16 +642,7 @@
 		
 
 		
-			use "$data\final\firm_year_level.dta" if period == 2015, clear
-			
-				merge m:1 fuid using  "$data\inter\matching_models\matching_forest_1.dta", keep(3) nogen keepusing(_weight _weight2 _support) 
-					keep 		if _support == 1	& _weight  != .				
 
-						
-			iebaltab firms_age employees turnover_r  productivity_r wages_worker_r import_tx export_tx number_loans_up2015 had_loan_up2015 inactive willclose_after2015  [aw=_weight] , format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Table1.xls") 	rowvarlabels replace 
-
-		
-		
 		
 		
 		

@@ -7,7 +7,7 @@
 	
 		
 		**
-		** Credit Registry Data -> each row is a loan ID for firm i, year t, the same firm can have several loans in the same year
+		** Credit Registry Data -> each row is a loan ID for firm i, in year t, ****the same firm can have several loans in the same year
 		*------------------------------------------------------------------------------------------------------------------------------------->>
 		{
 			**
@@ -39,46 +39,46 @@
 				**
 				*Renaiming variables
 				*--------------------------------------------------------------------------------------------------------------------------------->>
-				rename PersonBusinessNo 		lenderfiscalid  /*In case the business (from the list) is in related role to the loan then `Fake ID` of the business appears in the column “Fake Person Business No” */
-				rename FakepersonbusinessNo 	fuid_lender
-				rename IdNumber	 				fiscalid
-				rename FakeIdNumber 			fuid 			/*when it is the borrower then it appears in the column “Fake Id Number”*/
-				rename LoanNo 					loanid
-				rename Id 						procedureid 
-				rename ApprovalDate 			approvaldate
-				rename BirthDate 				birthdate
-				rename Institution 				institution
-				rename PersonType 				persontype
-				rename LegalEntityType 			legaltype
-				rename Municipality 			municipality
-				rename MaritalStatus 			maritalstatus
-				rename Occupation 				occupation
-				rename Income 					income
-				rename LoanType 				loantype
-				rename LoanActivityType 		loanactvitytype
-				rename LoanPeriod 				loanperiod
-				rename Period 					loanduration
-				rename PaymentFrequency 		payfreq
-				rename Amount 					loanamount
-				rename OutstandingAmount 		amountout
-				rename Currency 				currency
-				rename MaturityDate 			maturity
-				rename DisbursementDate 		disbursementdate
-				rename DisbursementAmount 		disbursedamount
-				rename EntryDateTime 			entrydate
-				rename LoanClassification 		loanclass
-				rename CollateralValue 			collateralvalue
-				rename CollateralUsed 			collateral
-				rename LoanPurpose 				loanpurpose
-				rename Country 					country
-				rename NominalInterestRate 		irate_nominal
-				rename EffectiveInterestRate 	irate_effec
-				rename Code 					code
-				rename CompanySize 				sizeclass
-				rename Fund 					fund
-				rename FundCoveredPercentage 	fundcoverage
-				rename Reprogrammed 			reprogrammed
-				rename Insolvency 				insolvency
+				rename 		PersonBusinessNo 		lenderfiscalid  /*In case the business (from the list) is in related role to the loan then `Fake ID` of the business appears in the column “Fake Person Business No” */
+				rename 		FakepersonbusinessNo 	fuid_lender
+				rename 		IdNumber	 				fiscalid
+				rename 		FakeIdNumber 			fuid 			/*when it is the borrower then it appears in the column “Fake Id Number”*/
+				rename 		LoanNo 					loanid
+				rename 		Id 						procedureid 
+				rename 		ApprovalDate 			approvaldate
+				rename 		BirthDate 				birthdate
+				rename 		Institution 				institution
+				rename 		PersonType 				persontype
+				rename 		LegalEntityType 			legaltype
+				rename 		Municipality 			municipality
+				rename 		MaritalStatus 			maritalstatus
+				rename 		Occupation 				occupation
+				rename 		Income 					income
+				rename 		LoanType 				loantype
+				rename 		LoanActivityType 		loanactvitytype
+				rename 		LoanPeriod 				loanperiod
+				rename 		Period 					loanduration
+				rename 		PaymentFrequency 		payfreq
+				rename 		Amount 					loanamount
+				rename 		OutstandingAmount 		amountout
+				rename 		Currency 				currency
+				rename 		MaturityDate 			maturity
+				rename 		DisbursementDate 		disbursementdate
+				rename 		DisbursementAmount 		disbursedamount
+				rename 		EntryDateTime 			entrydate
+				rename 		LoanClassification 		loanclass
+				rename 		CollateralValue 			collateralvalue
+				rename 		CollateralUsed 			collateral
+				rename 		LoanPurpose 				loanpurpose
+				rename 		Country 					country
+				rename 		NominalInterestRate 		irate_nominal
+				rename 		EffectiveInterestRate 	irate_effec
+				rename 		Code 					code
+				rename		CompanySize 				sizeclass
+				rename 		Fund 					fund
+				rename 		FundCoveredPercentage 	fundcoverage
+				rename 		Reprogrammed 			reprogrammed
+				rename 		Insolvency 				insolvency
 				*--------------------------------------------------------------------------------------------------------------------------------->>
 				
 				**
@@ -286,6 +286,7 @@
 				label define insolvency 0 "No" 1 "Yes" 2 "Repogramming" 3 "Restructuring" 4 "N/A"
 				label values insolvency insolvency
 
+				
 				**
 				*Firms age
 				*--------------------------------------------------------------------------------------------------------------------------------->>
@@ -307,47 +308,60 @@
 				replace 	irate_effec 	= "" 	if irate_effec 		== "NULL"
 				replace 	fundcoverage 	= "" 	if fundcoverage 	== "NULL"
 				destring 	income dis* coll* irate* fund*, replace
-				
-					
-				order 			fuid fiscalid procedureid loanid ApprovedMonthYear  period loanamount irate_nominal irate_effec currency disbursedamount amountout disbursementdate 	///
-					loanpurpose reprogrammed loantype loanclass loanperiod payfreq loanduration institution country collateral collateralvalue insolvency								/// 
-					entrydate approvaldate maturity persontype legaltype sizeclass birthdate municipality income occupation maritalstatus fund fundcoverage
-
-				duplicates drop fuid fiscalid procedureid loanid ApprovedMonthYear  period loanamount irate_nominal irate_effec currency disbursedamount amountout disbursementdate 	///
-					loanpurpose reprogrammed loantype loanclass loanperiod payfreq loanduration institution country collateral collateralvalue insolvency							 	/// 
-					entrydate approvaldate maturity persontype legaltype sizeclass birthdate municipality income occupation maritalstatus fund fundcoverage, force
 				*--------------------------------------------------------------------------------------------------------------------------------->>
 				
 
 				**
 				*All amounts in Euros
 				*--------------------------------------------------------------------------------------------------------------------------------->>
-				merge m:1 ApprovedMonthYear using "$data\inter\usd-to-euro-ex.dta", keep (1 3) nogen
-		
-				replace loanamount   	 = loanamount/exchange_rate  	 if currency == 2	
-				replace disbursedamount  = disbursedamount/exchange_rate if currency == 2	
-				replace amountout  		 = amountout/exchange_rate 		 if currency == 2	
-					
+				merge 		m:1 ApprovedMonthYear using "$data\inter\usd-to-euro-ex.dta", keep (1 3) nogen
+				replace 	loanamount   	 = loanamount/exchange_rate  	 if currency == 2	
+				replace 	disbursedamount  = disbursedamount/exchange_rate if currency == 2	
+				replace 	amountout  		 = amountout/exchange_rate 		 if currency == 2	
+				replace 	collateralvalue  = collateralvalue/exchange_rate if currency == 2		
+				
+				
 				**
 				*Errors
 				*--------------------------------------------------------------------------------------------------------------------------------->>
-				drop if loanamount == 0 | missing(loanamount) 
-				drop if missing(fuid)
+				drop 		if loanamount == 0 | missing(loanamount) 
+				drop 		if missing(fuid)
+				keep 		if period >= 2010
 				
-				keep if period >= 2010
-								
 				
-				************************************>>>> 
-				rename 	sizeclass size_creditdata													//same year, different loans and the same firm is registered with distinct sizes
-																									//firm A, loan 1-> micro, firm A, loan 2-> small.
+				**
+				*Duplicates
+				*--------------------------------------------------------------------------------------------------------------------------------->>
+				order 			fuid fiscalid procedureid loanid ApprovedMonthYear  period loanamount irate_nominal irate_effec currency disbursedamount amountout disbursementdate 	///
+					loanpurpose reprogrammed loantype loanclass loanperiod payfreq loanduration institution country collateral collateralvalue insolvency								/// 
+					entrydate approvaldate maturity persontype legaltype sizeclass birthdate municipality income occupation maritalstatus fund fundcoverage
+				
+				duplicates report 	fuid ApprovedMonthYear loanid 
+				
+				sort 				fuid loanid ApprovedMonthYear 
+				
+				duplicates drop 	fuid loanid ApprovedMonthYear, force 
+				
+				br 					fuid loanid ApprovedMonthYear maturity irate_nominal loanamount loanperiod loanclass  insolvency loanduration duration  loanpurpose payfreq
+
+					
+					
+				**
+				*Size of the firm
+				*--------------------------------------------------------------------------------------------------------------------------------->>
+				rename 	sizeclass size_creditdata													//same year, different loan ids and the same firm is registered with distinct sizes
+																									//for ex: firm A, loan 1-> micro, firm A, loan 2-> small.
+				//variable size is also available in the credit registry data, thats why I rename the variable here. 
+				//when we merge loan dataset with tax registry dataset, we can use this variable in case the variable size is missing in tax registry
+				
 				bys 	fuid period:egen A = mode(size_creditdata)
-				count 											 if A != size_creditdata			
-				gen 	error = 1 								 if A != size_creditdata
+				count 											 	if A != size_creditdata			
+				gen 	error = 1 									if A != size_creditdata
 				bys 	fuid period: egen max_error = max(error)
 				sort 	fuid period
 				br 		fuid period size_creditdata A error max_error if max_error == 1
-				replace size_creditdata = A  				 if !missing(A)							//for the same year, lets replace firm's size with the mode of firms size for that specific year
-				replace size_creditdata= . 				 if size_creditdata != A
+				replace size_creditdata = A  				 		if !missing(A)					//for the same year, lets replace firm's size with the mode of firms size for that specific year
+				replace size_creditdata= . 							if size_creditdata != A
 				drop 	A error max_error
 
 				
@@ -367,7 +381,7 @@
 				local ppi2011 87.78787637
 				local ppi2010 81.78486712
 				forvalues 	period  = 2010(1)2021{
-					foreach var of varlist loanamount disbursedamount {
+					foreach var of varlist loanamount disbursedamount collateralvalue {
 						if `period' == 2010 gen 	`var'_r = `var'/(`ppi`period''/100) if period == `period'
 						if `period' != 2010 replace `var'_r = `var'/(`ppi`period''/100) if period == `period'
 					}
@@ -375,18 +389,20 @@
 				format *amount* %15.2fc
 				order fuid period loanid 
 				sort  fuid period loanid
+				
 				compress
 				save "$data\inter\Credit Registry.dta", replace
 				br fuid period loanid size_creditdata loanamount loanclass loanperiod loanduration maturity fund fundcoverage irate_nominal irate_effec
 				count if irate_nominal == 0
 		}		
-		
+		*______________________________________________________________________________________________________________________________________*
 		
 		
 		**
 		** Loans collapsed at firm-year level -> panel of firms,
 		*------------------------------------------------------------------------------------------------------------------------------------->>
-		{
+		{ //the previous dataset is not a panel, as the same firm can have multiple loans in the year t. 
+		  //lets collapse loans by year/firm in order to have a panel and merge credit data with tax registry data. 
 			use "$data\inter\Credit Registry.dta", clear
 		
 				**
@@ -405,8 +421,7 @@
 
 				foreach var of varlist loanamount* disbursedamount* irate* duration {
 					gen 	`var'_kcgf 	= `var' if fund == 1
-					replace `var'  		= . 	if fund == 1
-					
+					replace `var'  		= . 	if fund == 1							//we will have one loan amount for kcgf loans and one loan amount for other loans. 
 				}
 				
 				**		
@@ -415,9 +430,9 @@
 					*-> The average loan amount 
 					*-> The total loan amount
 					*-> The average interest rate of the loans
-				collapse 	(sum)  loanamount* disbursed* num_loans num_loans_kcgf 						 			  ///
+				collapse 	(sum)  loanamount* disbursed* num_loans num_loans_kcgf 	collateralvalue*					 	///
 							///
-							(mean) first_loan first_kcgf  irate*  birthyear_creditdata firms_age_creditdata	duration* ///
+							(mean) first_loan first_kcgf  irate*  birthyear_creditdata firms_age_creditdata	duration* 		///
 							, by (fuid period size_creditdata)
 							
 					foreach var of varlist *amount* {
@@ -427,6 +442,7 @@
 				compress
 				save 	  "$data\inter\Credit Registry_firm-year-level.dta", replace
 		}
+		*______________________________________________________________________________________________________________________________________*
 
 		
 		
@@ -442,12 +458,13 @@
 					NominalInterestrate EffectiveInterestRate Maturity GracePeriod 												///
 					Region Section Division 																					///
 					TotalAssetsofBusiness NoOfEmployees ProjectedNoOfEmployees BusinessAnnualTurnover ProjectedAnnualTurnover	///
-					KCGFLoanStatus LoanStatus 
+					KCGFLoanStatus LoanStatus TotalCollateralvalue
+					
 					destring, replace
-					rename NoOfEmployees employees
-					rename BusinessAnnualTurnover turnover
-					gen    productivity = turnover/employees	//sales divided by number of employees
-
+					rename  NoOfEmployees employees
+					rename  BusinessAnnualTurnover turnover
+					rename (Maturity NominalInterestrate) (duration irate_nominal)
+					gen     productivity   = turnover/employees	//sales divided by number of employees
 					
 					*---------------------------------------------------------------------------------------------------------------------------------->>
 					foreach var of varlist ApprovedDate DisbursementDate {
@@ -462,7 +479,7 @@
 					}
 					
 					gen 	period = year(ApprovedDate)
-					rename (ApprovedAmount DisbursementAmount) (loanamount disbursedamount)
+					rename (ApprovedAmount DisbursementAmount TotalCollateralvalue) (loanamount disbursedamount collateralvalue)
 					drop	 if ApprovedDate == .	//one observation
 					
 					
@@ -486,6 +503,31 @@
 					
 					
 					**
+					*Outliers in terms of interest rates and duration according to firms' size
+					*---------------------------------------------------------------------------------------------------------------------------------->>
+					foreach size_kcgf  in 1 2 3 4 {
+						su 		irate_nominal 			if size_kcgf == `size_kcgf', detail
+						replace	irate_nominal = . 		if size_kcgf == `size_kcgf' & (irate_nominal <= r(p1) | irate_nominal >= r(p99))
+						su 		duration 				if size_kcgf == `size_kcgf', detail
+						replace duration 	  = . 		if size_kcgf == `size_kcgf' & (duration 	 <= r(p1) | duration	  >= r(p99))				
+					}
+					*---------------------------------------------------------------------------------------------------------------------------------->>
+					
+
+					**
+					*Loan amount as % of turnover
+					*---------------------------------------------------------------------------------------------------------------------------------->>
+					gen 		shareloan_turnover 		= (loanamount_r/turnover_r)*100
+					su			shareloan_turnover		, detail
+					replace 	shareloan_turnover 		= . 	if shareloan_turnover < r(p5) | shareloan_turnover > r(p95)
+					*---------------------------------------------------------------------------------------------------------------------------------->>
+					
+					
+					**
+					*---------------------------------------------------------------------------------------------------------------------------------->>
+					gen 		economic_recovery = Product == "Economic Recovery Window"	//identifying if a loan is Economic Recovery Window. 
+					
+					**
 					*Amounts in EUR 2021
 					*--------------------------------------------------------------------------------------------------------------------------------->>
 					local ppi2021 100
@@ -503,20 +545,21 @@
 
 					keep if 	period >= 2010
 					forvalues 	period  = 2010(1)2021 {
-						foreach var of varlist loanamount disbursedamount turnover productivity {
+						foreach var of varlist loanamount disbursedamount turnover productivity collateralvalue {
 							if `period' == 2010 gen 	`var'_r = `var'/(`ppi`period''/100) if period == `period'
 							if `period' != 2010 replace `var'_r = `var'/(`ppi`period''/100) if period == `period'
 						}
 					}
 					
+					**
+					*Error
 					replace employees = . if employees == 0
 					
 					format *amount* %15.2fc
 					compress
 					save "$data\inter\KCGF.dta", replace	
 			}
-			
-			
+		*______________________________________________________________________________________________________________________________________*
 			
 			
 			

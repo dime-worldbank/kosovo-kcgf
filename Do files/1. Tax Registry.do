@@ -25,7 +25,7 @@
 
 			
 			**
-			*Correction of activity, division and sector, done by Matias Belacin and Lucio Castro
+			*Correction of activity, division and sector. (Matias Belacin and Lucio Castro WB)
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			replace activityid 		= "-9999"    															 if (activityid   	== "xxxx"  		| activityid == "")
 			replace divisionid 		= "-99" 																 if  activityid 	== "-9999"
@@ -48,7 +48,7 @@
 
 			
 			**
-			*Size, in terms of numer of employees 
+			*Size, in terms of number of employees 
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			gen		size 			= .
 			replace size 			= 1 if employees <  10 
@@ -57,6 +57,8 @@
 			replace size 			= 4 if employees >= 250 & !missing(employees)
 			label 	define size 1 "Micro (0-9)" 2 "Small (10-49)" 3 "Medium (50-249)" 4 "Large (250+)"
 			label 	values size size
+			
+			**Lots of 0s and missings. Check the variable "sme"
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			
 			
@@ -77,13 +79,13 @@
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			gen 	error = birthyear > period								//firms birth year > period, it does not make sense. 
 			bys 	fuid period: egen firstyearpanel = min(period)		
-			replace birthyear = firstyearpanel 			if error == 1		//in this case, lets consider the birth year the first year of the firm in the panel. 
+			replace birthyear = firstyearpanel 			if error == 1		//for when the previous error happens, lets consider the birth year the first year of the firm in the panel. 
 			gen 	firms_age = period - birthyear
 			drop	firstyearpanel error
 			
 			
 			**
-			*Death year
+			*Death year (year the firm stops operating)
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			replace  deathyear = substr(deathyear, -9,4)					//year the firm closed according to Tax Registry
 			destring deathyear, replace
@@ -100,14 +102,18 @@
 			label values ethnicity ethnicity		
 
 
+			*---------------------------------------------------------------------------------------------------------------------------------->>
 			format *amount*  salaries* turnover* %15.2fc
+			
 			
 			**
 			*Dropping variables we do not need
+			*---------------------------------------------------------------------------------------------------------------------------------->>
 			drop ///
 			 frameperiod year_* vat_* cd_* pd_* qs_* is_*
 			
 			
+			*---------------------------------------------------------------------------------------------------------------------------------->>
 			compress
 			sort fuid period
 			save "$data\inter\Tax Registry.dta", replace
