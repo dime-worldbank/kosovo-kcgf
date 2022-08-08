@@ -371,8 +371,8 @@
 				bys 	 	fuid: egen  type_firm_panel = max (A)
 				br 		 	fuid main_dataset period num_loans* A  type_firm_panel
 				drop 		 A
-				label	 	define  type_firm_panel 0 "No loan" 1 "Loan"
-				label	 	val 	 type_firm_panel type_firm_panel 
+				label	 	define  type_firm_panel 0 "No loan 2010-2018" 1 "Loan 2010-2018"
+				label	 	val 	type_firm_panel type_firm_panel 
 				
 				
 				**

@@ -1,5 +1,11 @@
 
 	
+	*__________________________________________________________________________________________________________________________________________*
+	**
+
+	*ESTIMATION OF THE IMPACT OF KCGF ON FIRMS' PRODUCTIVITY, SALES, EMPLOYMENT, AND PROBABILITY OF STOPPING THEIR OPERATIONS
+	
+	
 	*A*
 	*Variables selected as good predictors of the probability of getting a KCGF funded loan, machine learning models
 	*________________________________________________________________________________________________________________________________________*
