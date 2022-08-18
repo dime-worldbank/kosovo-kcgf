@@ -1,10 +1,16 @@
 
 
-
 	*__________________________________________________________________________________________________________________________________________*
 	**
 
 	*TAX REGISTRY DATASET SHARED BY THE GOVERNMENT OF KOSOVO - > FORMAL FIRMS
+	
+	/*
+		
+		In the following code, I do not exclude any outliers in terms of total sales, number of employees, sales per employee.
+
+		
+	*/
 	
 		**
 		*------------------------------------------------------------------------------------------------------------------------------------->>
@@ -112,6 +118,7 @@
 			drop ///
 			 frameperiod year_* vat_* cd_* pd_* qs_* is_*
 			
+			egen 	group_sme = group(sme)
 			
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 			compress

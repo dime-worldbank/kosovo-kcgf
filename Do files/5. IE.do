@@ -2,8 +2,17 @@
 	
 	*__________________________________________________________________________________________________________________________________________*
 	**
-
+	/*
 	*ESTIMATION OF THE IMPACT OF KCGF ON FIRMS' PRODUCTIVITY, SALES, EMPLOYMENT, AND PROBABILITY OF STOPPING THEIR OPERATIONS
+	
+	-> Treatment Group -> KCGF firms
+	-> Comparison Group 0 -> Firms with no loans at all
+	-> Comparison Group 1 -> Firms with other types of loans
+	
+	-> Estimate of the impact of KCGF comparing KCGF firms and firms without loans
+	-> Estimate of the impact of KCGF comparing KCGF firms and firms with other loans
+	
+	*/
 	
 	
 	*A*
@@ -44,7 +53,7 @@
 		
 		
 		global controls0_xgboost	 	import_tx 			 sectionid1 				sectionid20 			///
-										sq_number_loans 	 sq_lag1_num_loans 	    	sq_lag2_num_loans 		///
+										sq_num_loans 		 sq_lag1_num_loans 	    	sq_lag2_num_loans 		///
 										num_loans 			 sq_lag1_wages_worker_r 	sq_number_loans_up2015
 										
 		global controls0_vivian	 		number_loans_up2015 sq_number_loans_up2015				///
@@ -83,7 +92,7 @@
 		
 		
 		global controls1_xgboost	 	import_tx 			 sectionid1 				sectionid20 			///
-										sq_number_loans 	 sq_lag1_num_loans 	    	sq_lag2_num_loans 		///
+										sq_num_loans 	 	 sq_lag1_num_loans 	    	sq_lag2_num_loans 		///
 										num_loans 			 sq_lag1_wages_worker_r 	sq_number_loans_up2015
 										
 		global controls1_vivian	 		number_loans_up2015 sq_number_loans_up2015		///
@@ -106,17 +115,15 @@
 			**
 			*1* PSM
 			*--------------------------------------------------------------------------------------------------------------------------------*
-			use "$data\final\firm_year_level.dta"  , clear
+			use "$data\final\firm_year_level.dta" if inlist(group_sme,1,2,3)  , clear //MSMEs
 			*--------------------------------------------------------------------------------------------------------------------------------*
 			{	
 				**
 				**
 				*----------------------------------------------------------------------------------------------------------------------------*
-				keep 	if main_dataset == 1   & period == 2015			//active firms in 2015
-				keep 	if sme 			== "a.1-9"	//micro, small or medium firms
+				keep 	if main_dataset == 1   & period == 2015									//active firms in 2015
 				keep 	if inlist(type_firm_after2015,`comparison', 2) 							//keeping only comparison group 0 or 1 and type_firm_2015 = 2 (which means the ones that had access to KCGF)
 				keep    if active == 1
-				*drop 	if deathyear 	== 2015
 				*----------------------------------------------------------------------------------------------------------------------------*
 
 				**
@@ -177,8 +184,8 @@
 				if `comparison' == 1 & "`model'" == "vivian" 	{
 				psmatch2 treated $controls1_vivian	, n(3) common ties	
 				probit	 treated $controls1_vivian
-				}				
-				
+				}	
+		
 				*----------------------------------------------------------------------------------------------------------------------------*
 				
 				*Weights
@@ -274,7 +281,7 @@
 						drop in 1
 						if `variable' == 1 rename (results11-results15)  (period type_firm_after2015 turnover_r 			lturnover_r  		uturnover_r )
 						if `variable' == 2 rename (results21-results25)  (period type_firm_after2015 productivity_r 		lproductivity_r 	uproductivity_r)
-						if `variable' == 3 rename (results31-results35)  (period type_firm_after2015 employees 			lemployees 			uemployees)
+						if `variable' == 3 rename (results31-results35)  (period type_firm_after2015 employees 				lemployees 			uemployees)
 						tempfile  `variable'
 						save 	 ``variable'', replace
 					}
@@ -351,7 +358,7 @@
 
 		
 	*C*
-	*Probability of receiving the treatment versus firms' characteristics
+	*Probability of receiving the treatment (KCGF) versus firms' characteristics
 	*________________________________________________________________________________________________________________________________________*
 	{
 	
@@ -458,7 +465,7 @@
 	*Regressions
 	*________________________________________________________________________________________________________________________________________*
 	{	
-	    matrix results = (0,0,0,0,0,0,0,0)		//variable, comparison, model, sample, att, lower bound, upper bound, outcome average. 
+	   matrix results = (0,0,0,0,0,0,0,0)		//variable, comparison, model, sample, att, lower bound, upper bound, outcome average. 
 			local nvar = 1
 			foreach variable in  turnover_r employees productivity_r closed_definitely  {	 //productivity_r turnover_r employees	
 				estimates clear	
@@ -471,16 +478,16 @@
 							merge m:1 fuid using  "$data\inter\matching_models\matching_`model'_`comparison'.dta", keep(3) nogen keepusing(_weight _weight2 _support) 
 							keep 		if _support == 1	& _weight  != .				
 				
-							foreach sample in 2 {  //1 2
+							foreach sample in 2 {  //1 2 //2-> sample that includes 0 in employees, productivity and turnover of firms that were inactive.
 								xtset fuid period
 								preserve
 								if 		`sample' == 1 keep if main_dataset == 1
-							    xtreg 	`variable'  after_kcgf i.period  [aw = _weight] if period >= 2015 , fe cluster(fuid)
+							    xtreg 	`variable'  after_kcgf i.period  [aw = _weight] if period >= 2015 & nonmissing == 1, fe cluster(fuid)
 								eststo	 model`comparison'`nmodel'`sample'
 								local  ATT 			 = el(r(table),1,1)	
 								local  lowerbound 	 = el(r(table),5,1)
 								local  upperbound    = el(r(table),6,1)
-								su 		`variable' 			if type_firm_after2015 == 2  & period == 2015 [aw = _weight], detail
+								su 		`variable' 										if type_firm_after2015 == 2  & period == 2015 [aw = _weight], detail
 								scalar 	 media			   = r(mean)
 								estadd   scalar media      = media:     model`comparison'`nmodel'`sample'
 								scalar 	 effect			   = `ATT'/media
@@ -628,33 +635,3 @@
 						
 						
 						
-						
-						
-						
-		/*
-		
-		
-		
-		 use "$data\final\firm_year_level.dta", clear
-		
-			su closed_definitely if period < 2016 & num_loans != 0, detail
-		
-		
-				/*
-		 use "$data\final\firm_year_level.dta", clear,
-
-		
-
-		
-
-		
-
-		
-		
-		
-			use "$data\final\firm_year_level.dta", clear
-						
-							merge m:1 fuid using  "$data\inter\matching_models\matching_ols_1.dta", keep(3) nogen keepusing(_weight _weight2 _support) 
-							keep 		if _support == 1	& _weight  != .		
-		
-			eststo: xtreg employees  after_kcgf i.period  [aw = _weight] if main_dataset == 1, fe cluster(fuid)
