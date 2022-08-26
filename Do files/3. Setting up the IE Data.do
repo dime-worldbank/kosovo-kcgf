@@ -206,7 +206,7 @@
 				foreach var of varlist  turnover_r salaries_r exports_amount_r imports_amount_r  	{
 					foreach sme in 1 2 3 4 5														{
 							su 		`var' 		if group_sme == `sme', detail
-							replace `var' = . 	if group_sme == `sme' & (`var' <= r(p10) | `var' >= r(p90))
+							replace `var' = . 	if group_sme == `sme' & (`var' <= r(p5) | `var' >= r(p95))
 					}
 				}				
 								
@@ -301,7 +301,7 @@
 				*Lag values
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				sort fuid period
-				foreach var of varlist sme size wages_worker_r turnover_r productivity_r employees num_loans  {
+				foreach var of varlist group_sme wages_worker_r turnover_r productivity_r employees num_loans  {
 					gen lag1_`var' = l1.`var'
 					gen lag2_`var' = l2.`var'
 					gen lag3_`var' = l3.`var'
@@ -438,6 +438,19 @@
 					gen 	sq_`var' = `var'^2 
 				}
 				
+				
+				*Average growth in the last years
+				*------------------------------------------------------------------------------------------------------------------------------>>
+				sort fuid period
+				foreach 	var of varlist productivity_r employees turnover_r {
+				gen			avgrowth_`var' = ((`var'/lag1_`var') - 1)*100  if main_dataset == 1
+				su 			avgrowth_`var', detail
+				replace 	avgrowth_`var' = . if avgrowth_`var' <= r(p10) | avgrowth_`var' >= r(p90)
+				}
+
+				gen 	lag1_avgrowth_productivity_r = l1.avgrowth_productivity_r
+				gen 	lag1_avgrowth_employees		 = l1.avgrowth_employees
+				gen 	lag1_avgrowth_turnover_r 	 = l1.avgrowth_turnover_r
 
 				*Quantiles productivity
 				*------------------------------------------------------------------------------------------------------------------------------>>
@@ -448,20 +461,6 @@
 				cap noi quantiles wages_worker_r	 	if period == `period' & active == 1 ,  n(10) gencatvar(qua_wages_worker_r`period')
 				cap noi quantiles avgrowth_turnover_r   if period == `period' & active == 1 ,  n(10) gencatvar(qua_avgrowth_turnover_r`period')
 				}
-								
-				*Average growth in the last years
-				*------------------------------------------------------------------------------------------------------------------------------>>
-					
-				sort fuid period
-				foreach 	var of varlist productivity_r employees turnover_r {
-				gen			avgrowth_`var' = ((`var'/lag1_`var') - 1)*100  if main_dataset == 1
-				su 			avgrowth_`var', detail
-				replace 	avgrowth_`var' = . if avgrowth_`var' <= r(p10) | avgrowth_`var' >= r(p90)
-				}
-							
-				gen 	lag1_avgrowth_productivity_r = l1.avgrowth_productivity_r
-				gen 	lag1_avgrowth_employees		 = l1.avgrowth_employees
-				gen 	lag1_avgrowth_turnover_r 	 = l1.avgrowth_turnover_r
 				
 				**
 				*Labels

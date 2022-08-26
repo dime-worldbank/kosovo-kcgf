@@ -60,10 +60,14 @@
 	*--------------------------------------------------------------------------------------------------------------------------------*
 		
 		*Data -> raw folder -> files: 
+		
 				- KCGF.xlxs. File shared by the Kosovo Credit Guarantee Fund. It has data on loans covered by the fund.
+				
 				- LoanApplications-Final.xlsx. File shared by the Central Bank. It has data on loans approved to the firms in Kosovo.
+				
 				- Tax Registry.csv. File shared by the Tax authority of Kososo. It has data on employment, sales, and other
 				firms' characteristics.
+				
 				- usd-to-euro. File that contains the exchange rate USD, EUR
 				
 			   -> inter and final folders -> all the files in these folders are created after running the do files. 

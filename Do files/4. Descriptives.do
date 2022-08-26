@@ -6,94 +6,18 @@
 	*DESCRIPTIVE STATISTICS USED IN THE ANALYSIS OF KCGF.
 	
 	/*
-	We compare KCGF firms, firms with loans approved but not covered by the fund, and firms with no loans approved. 
+	We compare 1) KCGF firms, 2) firms with loans approved but not covered by the fund, and 3) firms with no loans approved. 
+	
 	We aim to :
+	
 	- identify what are the factors that play an important role in the decision of the bank to include the firm
 	in the fund.
+	
 	- the main characteristics of credit-constrained firms. 
+	
 	- compare the loan amount, interest rates and duration of kcgf and non-kcgf loans. 
+	
 	*/
-
-	
-	use   "$data\inter\KCGF.dta" if period == 2021 & LoanStatus != "Canceled" & inlist(size_kcgf, 1,2,3), clear	//not including large companies
-
-	keep 	if inlist(duration,12,24,36,48,60)
-	gen 	turnover_r2021 = turnover_r
-	gen lowerturnover_r2021 = turnover_r
-	gen upperturnover_r2021 = turnover_r
-	
-	
-	rename (interest1-interest6) (interest2022 interest2023 interest2024 interest2025 interest2026 interest2027)
-	
-	foreach year in 2022 2023 2024 2025 2026 {
-		local 	yearn = `year'- 1
-		gen 	lowerturnover_r`year'	= lowerturnover_r`yearn'*1.02
-		gen 	turnover_r`year'		= turnover_r`yearn'*1.08
-		gen 	upperturnover_r`year'	= upperturnover_r`yearn'*1.12
-
-		gen 	a`year' = interest`year'/lowerturnover_r`year'
-		gen 	 	 b`year' = interest`year'/turnover_r`year'
-		gen     c`year' = interest`year'/upperturnover_r`year'
-	}	
-	gen fuid = _n
-	drop turnover_r
-	keep fuid a* b* c* turnover* lower* upper* interest2022-interest2027
-
-
-	
-	reshape long a b c turnover_r lowerturnover_r upperturnover_r interest, i(fuid) j(period)
-
-		collapse (median)a b c *turnover* interest* , by(period)
-
-	
-		tw line interest period 
-	
-	
-	collapse (median)a b c , by(period)
-	
-	replace a 
-					
-					twoway    bar b period, ml() barw(0.6) color(emidblue)   || ///
-					rcap a c period , lcolor(navy)	///
-						xtitle("", size(medsmall)) 											  																											///
-						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
-						ylabel(0.01(0.005)0.03) ///
-						xscale(r()) 																																								///
-						title(, size(medsmall) color(black)) 																																			///
-						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
-						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
-						legend(order(1 "Estimate %, sales" 7 "Estimate %, productivity" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
-						ysize(4) xsize(7)  ///
-						note("", color(black) fcolor(background) pos(7) size(small)) 
-	
-	
-	
-							twoway    bar att model if model == 1 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
-							   || bar att model if model == 3 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
-
-	
-						twoway    bar att model if model == 1 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
-							   || bar att model if model == 3 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
-							   || bar att model if model == 5 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 6 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
-							   || bar att model if model == 7 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 8 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
-						xtitle("", size(medsmall)) 											  																											///
-						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
-						xlabel(1 `" "Model 1" "' 2 `" "Model 2" "' 3 `" "Model 3" "' 4 `" "Model4" "' 5 `" "Model 1" "' 6 `" "Model 2" "' 7 `" "Model 3" "' 8 `" "Model4" "', labsize(small) ) 									///
-						xscale(r()) 																																								///
-						xline(4.5, lpattern(shortdash) lcolor(cranberry)) ///
-						title(, size(medsmall) color(black)) 																																			///
-						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
-						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
-						legend(order(1 "Estimate %, sales" 7 "Estimate %, productivity" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
-						text(35 2.5 "Increase in sales, %") 																																							///
-						text(35 6.5 "Increase in productivity, %") 																																						///
-						ysize(4) xsize(7)  ///
-						note("", color(black) fcolor(background) pos(7) size(small)) 
-						graph export "$output/figures/results1.pdf", as(pdf) replace
-
-	
-		
-	
 	
 	
 	*--------------------------------------------------------->>>
@@ -146,29 +70,32 @@
 	
 	*--------------------------------------------------------->>>
 	**
-	*Comparing the turnover that:
+	*Data inconsistence. Comparing the turnover that:
+	
 		*The firms report to KCGF 
 		*versus 
-		*The turnover they report to the Banks
+		*the one they report to the Tax Registry
 		
-	*We only have turnover reported to the banks in the KCGF dataset, so we restrict this analysis for these firms. 
 	*--------------------------------------------------------->>>
-	{
-		use 	"$data\final\firm_year_level.dta" if period == 2018 & inlist(group_sme, 1) & has_kcgf == 1, clear
+	{	//we only have turnover reported to the banks in the KCGF dataset, so we restrict this analysis for these firms. 
 		
-		keep 	has_loan period turnover_r type_firm_after2015 employees productivity_r
+		**
+		**
+		use 	"$data\final\firm_year_level.dta" if period == 2018 & has_kcgf == 1, clear
+			keep 	has_loan period turnover_r type_firm_after2015 employees productivity_r irate_nominal group_sme
+			gen 	base = 1
+			*replace turnover_r = turnover_r*12
+			
+		**
+		**
+		append  using "$data\inter\KCGF.dta" 	 , keep(turnover_r loanamount_r period size_kcgf employees productivity_r irate_nominal)
+			replace base = 2 if base ==.
+			keep if period == 2018
+			bys 	base: su turnover_r
+			bys 	base: su irate_nominal
 		
-		gen 	base = 1
-		replace turnover_r = turnover_r*12
-		
-		append  using "$data\inter\KCGF.dta" 	 , keep(turnover_r loanamount_r period size_kcgf employees productivity_r)
-		replace base = 2 if base ==.
-		keep if period == 2018
-		drop if base == 2 & size_kcgf > 1
-		bys 	base: su turnover_r
-		
-			tw (histogram turnover_r if base == 1 ,  percent color(emidblue) fintensity(50))  (histogram turnover_r  if base == 2 ,  percent fcolor(none) lcolor(black)),   ///
-			legend(order(1 "Tax Registry" 2 "KCGF Dataset") pos(12) size(medium) cols(2) region(lwidth(white) lcolor(white) color(white) fcolor(white) )) 		 ///
+			tw (histogram turnover_r if base == 1 & inlist(group_sme, 1),  percent color(emidblue) fintensity(50))  (histogram turnover_r  if base == 2  & size_kcgf == 1 ,  percent fcolor(none) lcolor(black)),   ///
+			legend(order(1 "Tax Registry" 2 "KCGF Dataset") pos(12) size(medium) cols(2) region(lwidth(white) lcolor(white) color(white) fcolor(white))) 		 ///
 			ytitle("% firms", size(large)) ylabel(, nogrid labsize(large) format(%12.0fc)) 						 ///
 			xtitle("", size(medium)) xlabel(,labsize(small) format(%12.0fc)) 				 	 				 ///
 			title("", pos(12) size(medsmall) color(black)) 														 ///
@@ -177,23 +104,181 @@
 			plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 ///
 			ysize(5) xsize(6) 																					 ///
 			note("", color(black) fcolor(background) pos(7) size(small)) 
-			*graph export "$output/figures/av_`var'.pdf", as (pdf) replace
+			graph export "$output/figures/turnover_TaxRegistry_KCGF.pdf", as (pdf) replace
+			
+			replace size_kcgf = group_sme if size_kcgf == . 
+			iebaltab turnover_r employees productivity_r irate_nominal if size_kcgf == 1,  format(%12.0fc %12.2fc) grpvar(base) save("$output/tables/Balance Test Tax Registry KCGF_micro_firms.xls") 	rowvarlabels replace 
+			iebaltab turnover_r employees productivity_r irate_nominal if size_kcgf == 2,  format(%12.0fc %12.2fc) grpvar(base) save("$output/tables/Balance Test Tax Registry KCGF_small_firms.xls") 	rowvarlabels replace 
 	}
 	
-
+		
 		
 	*--------------------------------------------------------->>>
 	**
-	*Machine learning results according to Simon Valerio estimates
+	*Firms' characteristics by size 2015
+	{
+		use "$data\final\firm_year_level.dta" if period == 2015 & active == 1, clear
+						
+			**
+			replace willclose_after2015 = willclose_after2015*100
+			replace had_loan_up2015     = had_loan_up2015*100
+			replace nocredit_history    = nocredit_history*100
+			replace turnover_r 			= turnover_r/1000							//outliers already replaced by missing in the do file 3. Setting up the IE Data. 
+			replace productivity_r 		= productivity_r/1000
+			label var turnover_r  		"Sales, thousands 2021 EUR" 
+			label var productivity_r  	"Productivity, thousands 2021 EUR" 
+			
+			**
+			tab 	sme
+			
+			drop if group_sme == 5
+			iebaltab turnover_r employees productivity_r willclose_after2015 nocredit_history,  format(%12.0fc %12.2fc) grpvar(group_sme) save("$output/tables/Firms' characteristics by size_2015.xls") 	rowvarlabels replace 
+
+			**
+			/*
+			sumstats ///
+			(turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal  if group_sme == 1) ///
+			(turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal  if group_sme == 2) ///
+			using "test.xlsx", replace stats(mean sd n)
+			
+			tabform  turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal ///
+			using "$output\tables\Firms' characteristics by size_2015.xls", by(sme) sd sdbracket vertical
+			*/
+	}
+	*________________________________________________________________________________________________________________________________*
+		
+		
+		
+	*--------------------------------------------------------->>>
+	**
+	**
+	*% loans by number of employees
+	*________________________________________________________________________________________________________________________________*
+	{	//the bigger the firm, the higher the % with loans
+		**
+		**
+		*----------------------------------------------------------------------------------------------------------------------------*
+		*----------------------------------------------------------------------------------------------------------------------------*
+		use "$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2015, 2017, 2018) , clear
+		*----------------------------------------------------------------------------------------------------------------------------*
+			
+			**
+			gen 		id = 1 
+			gen 		has_otherloan 	= 1   	if has_kcgf == 0     & has_loan  == 1
+			replace 	employees 		= 0   	if sme == "a.1-9"    & employees == .
+			replace 	employees 		= 20  	if  employees >  20  & employees < 50 
+			replace 	employees 		= 21  	if (employees >= 50  & employees < 250) | sme == "c.50-249"
+			replace 	employees 		= 22  	if (employees > 250  & employees != . ) | sme == "d.250+"
+			label 		define employees 0 "0 or N/A" 20 "20-49" 21 "50-249" 22 "250+" 
+			label 		val employees employees
+			
+			**
+			replace 	period = 2017 			if period == 2018
+			
+			**
+			collapse (sum) has_kcgf  id has_otherloan, by(employees group_sme period)
+			gen 		share_kcgf  = (has_kcgf/ id)*100
+			gen 		share_loans = (has_otherloan/ id)*100
+			
+			**
+			*Average between 2017-2018
+			graph bar (asis)share_kcgf share_loans if inlist(period,2017),  bar(1, color(navy) fintensity(inten30)) bar(2, color(cranberry) fintensity(inten30)) 		///
+			 over(employees, sort() label(labsize(medium) angle(45)) ) stack 																	///
+			blabel(bar, position(outside) orientation(horizontal) size(large) color(black) format (%4.0fc))   								 	///
+			ytitle("% firms with loans", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
+			yscale(line ) ///
+			legend(order(1  "KCGF"  2 "Other loans"  ) region(lwidth(none) color(white) fcolor(none)) cols(3) size(large) position(12)) 		///	
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			ysize(6) xsize(10) 																						
+			graph export "$output\figures\share with loans by employees_2017-2018.pdf", as(pdf) replace	
+			
+			**
+			*Average in 2015
+			graph bar (asis)share_loans if inlist(period, 2015),   bar(1, color(cranberry) fintensity(inten30)) 								///
+			 over(employees, sort() label(labsize(medium) angle(45)) ) stack 																	///
+			blabel(bar, position(outside) orientation(horizontal) size(large) color(black) format (%4.0fc))   								 	///
+			ytitle("% firms with loans", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
+			yscale(line ) 		///
+			legend(off) 		///	
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			ysize(6) xsize(10) 																						
+			graph export "$output\figures\share with loans by employees_2015.pdf", as(pdf) replace	
+			
+			
+			collapse (sum) id has_otherloan, by(group_sme period)
+			gen 		share_loans = (has_otherloan/ id)*100
+			
+			label define group_sme 1 "Micro" 2 "Small" 3 "Medium" 4 "Large"
+			label val    group_sme group_sme
+			
+			separate share_loans, by(group_sme)
+			
+			**
+			*Average in 2015
+			tw 
+			graph bar (asis)share_loans1 share_loans2 share_loans3 share_loans4 if inlist(period, 2015) & group_sme != 5,   bar(1, color(navy) fintensity(inten30))  bar(2, color(navy) fintensity(inten50)) bar(3, color(navy) fintensity(inten60))	bar(4, color(navy) fintensity(inten90))				///
+			 over(group_sme, sort() label(labsize(medium)) ) stack 																	///
+			blabel(bar, position(outside) orientation(horizontal) size(large) color(black) format (%4.0fc))   								 	///
+			ytitle("% firms with loans", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
+			yscale(line ) 		///
+			legend(off) 		///	
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			ysize(6) xsize(6) 																						
+			graph export "$output\figures\share with loans by size_2015.pdf", as(pdf) replace	
 	
-	*Which are the firms' characteristics that increase their probability of having an approved loan?
+	}
+	
+	
+
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	**
+	*Firms with loans by size
+	*________________________________________________________________________________________________________________________________*
+	{	//the bigger the firm, the higher the % with loans
+		**
+		**
+		*----------------------------------------------------------------------------------------------------------------------------*
+		*----------------------------------------------------------------------------------------------------------------------------*
+		use "$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2015) & group_sme < 5 , clear
+		*----------------------------------------------------------------------------------------------------------------------------*
+				
+			**
+			graph pie has_loan,  over(group_sme)   ///
+			pie(1, explode  color(emidblue)) pie(2, explode  color(navy*0.6))  pie(3, explode  color(emidblue))  pie(4, explode  color(emidblue*0.7)) pie(5, explode color(gs12)) pie(6, explode color(cranberry*0.6)) ///
+			plabel(_all percent,   						 gap(-10) format(%2.0fc) size(medsmall)) 												///
+			legend(order(1 "Prob > 90%" 2 "Prob > 80% & < 90%" 3 "Prob > 70% & < 80%" 4  "Prob > 60% & < 70%" 5 "Prob > 50% & < 60%" 6 "Prob < 50%") cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall)) ///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 					 			///
+			plotregion(color(white)  fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 						 			///
+			note("", span color(black) fcolor(background) pos(7) size(small))																	///
+			ysize(4) xsize(6) 	
+			graph export "$output/figures/ML_probability_loan.pdf", as(pdf) replace	
+			graph export "$output/figures/ML_probability_loan.emf", as(emf) replace	
+			
+
+	}
+	
+		
+	*--------------------------------------------------------->>>
+	**
+	*Which are the firms' characteristics that increase their probability of having a loan approved? 
+	
+	/*
+	Machine learning results according to Simon Valerio estimates.
+	Simon used firm_year_level dataset to assess the probability of a firm having a loan approved in 2018
+	He saved the file potential_borrowers_top10_vars in datawork\data\final.*/ 
+	
 	{
 		
 		**
 		**
 		*Probability of having a loan according to the Machine Learning model run by Simon Valerio
 		import 		delimited using "$data\final\potential_borrowers_top10_vars.csv", clear
-		
 		cap noi quantiles lag1_avgrowth_turnover_r 	 ,  n(10) gencatvar(qua_turnover)
 		cap noi quantiles lag1_productivity_r 		 ,  n(10) gencatvar(qua_productivity)
 
@@ -203,7 +288,8 @@
 		local xvar = 1
 		foreach variable in lag1_employees qua_productivity qua_turnover number_loans_up_t_minus1 {
 			preserve
-			if "`variable'" == "lag1_employees" keep if lag1_employees < 30
+			if "`variable'" == "lag1_employees" 			keep if lag1_employees 			  < 30
+			if "`variable'" == "number_loans_up_t_minus1"  keep if number_loans_up_t_minus1  < 15
 			levelsof `variable', local(`variable'_list) 
 			foreach code in ``variable'_list' {
 				ci means probability if `variable' == `code'
@@ -264,169 +350,7 @@
 		}
 	*________________________________________________________________________________________________________________________________*
 		
-		
-		
-	*--------------------------------------------------------->>>
-	**
-	*PSmatch
-	
-	*Which are the firms' characteristics that increase their probability of having an approved loan?
-	{
 
-		**
-		*
-		use 		"$data\final\firm_year_level.dta" if active == 1, clear
-	
-		**
-		**
-		sort 		fuid period
-		replace 	qua_productivity_r2017  		= l1.qua_productivity_r2017 		if period == 2018
-		replace 	qua_turnover_r2017 				= l1.qua_turnover_r2017				if period == 2018
-		replace 	qua_avgrowth_turnover_r2017  	= l1.qua_avgrowth_turnover_r2017	if period == 2018
-		
-		keep if 	period == 2018
-		
-		
-		**
-		*Probability of loan
-		reg 		has_loan 	 i.municipalityid lag1_employees sq_lag1_employees number_loans_up_t_minus1  		 ///
-								 sq_lag1_productivity_r lag1_productivity_r  lag1_turnover_r 	sq_lag1_turnover_r 	 ///
-								 lag1_avgrowth_turnover_r firms_age 
-									
-		predict  xb 			//probability of treatment according to the model
-		su 		 xb, detail
-		replace  xb = . if xb <= r(p1) | xb >= r(p99)
-
-		**
-		**
-		keep 	if group_sme == 1 | group_sme == 2
-
-		
-		**
-		*Average probability (and CI) of loan according to firms' characteristics
-		matrix results = (0,0,0,0,0)
-		local xvar = 1
-		rename qua_avgrowth_turnover_r2017 qua_turnover
-		foreach variable in lag1_employees qua_productivity_r2017  qua_turnover number_loans_up_t_minus1 {
-			preserve
-			if "`variable'" == "lag1_employees" keep if lag1_employees < 30
-			levelsof `variable', local(`variable'_list) 
-			foreach code in ``variable'_list' {
-				ci means xb if `variable' == `code'
-				matrix results = results\(`xvar', `code', r(mean), r(lb), r(ub))
-			}
-			local xvar = `xvar' + 1
-			restore
-		}
-		
-		**	
-		*Probability of loan, CI, and variables under analysis and its values (employees, productivity, credit history)
-		clear 
-		svmat results
-		drop in 1
-		rename (results1-results5) (variable code xb lower upper)	
-
-		**
-		*Figures
-		foreach variable in 1 2 3 4  {
-			     
-				if `variable' == 1   local xtitle = "Number  of employees in 2017"
-				
-				if `variable' == 2   local xtitle = "Deciles of sales per employee in 2017"
-
-				if `variable' == 3   local xtitle = "Deciles of turnover growth in 2017" 	
-
-				if `variable' == 4   local xtitle = "Credit history (number loans in until 2017)"		
-
-				
-				tw 	///
-				(rarea lower upper 	code if variable == `variable' , fcolor(gs12%30) lcolor(bg) fintensity(50)) ///
-				(line  xb 			code if variable == `variable' , lcolor(cranberry) lwidth(0.5) lp(shortdash)  ///  			
-				ylabel(,  labsize(medium) nogrid gmax angle(horizontal) format(%12.3fc)) ysca()  ///
-				///
-				ytitle("Probability", size(medium))   ///
-				///
-				xtitle("`xtitle'", size(medium)) ///
-				///
-				xlabel(, angle(360) labsize(medium)) ///
-				///
-				title("`title'", pos(12) size(medlarge) color(black)) ///
-				///
-				subtitle(, pos(12) size(medsmall) color(black)) ///
-				///
-				graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) ///
-				///
-				plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) ///
-				///
-				legend(order(1 "95% CI"  2 "Probability of approved loan in 2018" ) region(lwidth(none)) cols(1) size(medium) position(11) bplacement(seast)) ///
-				///
-				ysize(5) xsize(7)	 ///
-				///
-				note("", color(black) fcolor(background) pos(7) size(small))) 
-				graph export "$output/figures/probability_`variable'.emf", as(emf) replace
-				graph export "$output/figures/probability_`variable'.pdf", as(pdf) replace
-				}
-	}
-	*________________________________________________________________________________________________________________________________*
-		
-
-		
-	*--------------------------------------------------------->>>
-	**
-	*Comparing firms with with loans approved in 2018 and firms without loans any loans approved between 2010-2018
-	{
-		use 	"$data\final\firm_year_level.dta" if active == 1 & period == 2018 & main_dataset == 1, clear	
-		
-		**
-		tab sme if type_firm_panel == 0			//more than 98% of the firms that did not have access to credit between 2010-2018 are micro-firms. 
-		
-		**
-		keep if inlist(sme, "a.1-9") 			//micro-firms
-		
-		**
-		keep if type_firm_panel == 0 | (type_firm_panel == 1 & has_loan == 1)	//firms without loans in the whole period and firms with credit history and one loan approved in 2018
-		
-		**
-		replace export_tx = export_tx*100
-		replace import_tx = import_tx*100
-		replace has_credit_history = has_credit_history*100
-		
-		
-		**
-		eststo clear
-		bys  type_firm_panel: eststo:  estpost sum employees turnover_r productivity_r wages_worker_r export_tx import_tx firms_age has_credit_history
-		esttab using "$output/tables/ Firms’ characteristics by access to credit_2018.csv", replace  cells("mean sd min max") nodepvar    
-
-		**
-		*Distribution in the average growth rate in total sales and sales per employee
-		foreach var of varlist avgrowth_turnover_r avgrowth_productivity_r { 
-			
-			if "`var'" == "avgrowth_turnover_r" 	{
-				local xtitle = "Annual growth sales"
-				local color olive_teal
-			}
-			
-			if "`var'" == "avgrowth_productivity_r" {
-				local xtitle = "Annual growth sales per employee"
-				local color orange*0.8
-			}	
-				
-			tw (histogram `var' if type_firm_panel == 0 ,  percent color(`color') fintensity(50))  (histogram `var'  if type_firm_panel == 1 ,  percent fcolor(none) lcolor(black)),   ///
-			legend(order(1 "Credit constrained firms" 2 "Firms with loans approved") pos(12) size(medium) cols(1) region(lwidth(white) lcolor(white) color(white) fcolor(white) )) 		 ///
-			ytitle("% firms", size(large)) ylabel(, nogrid labsize(large) format(%12.0fc)) 						 ///
-			xtitle("`xtitle'", size(medium)) xlabel(,labsize(small) format(%12.0fc)) 				 	 				 ///
-			title("", pos(12) size(medsmall) color(black)) 														 ///
-			subtitle("", pos(12) size(medsmall) color(black)) 													 ///
-			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 	 ///
-			plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 ///
-			ysize(5) xsize(6) 																					 ///
-			note("", color(black) fcolor(background) pos(7) size(small)) 
-			graph export "$output/figures/av_`var'.pdf", as (pdf) replace
-		}
-	}
-	*________________________________________________________________________________________________________________________________*
-		
-		
 		
 	*--------------------------------------------------------->>>
 	**
@@ -435,28 +359,26 @@
 		
 		*
 		*A*
-		*ML results
+		*Machine Learning results
 		*Probability of loan according to the model Simon Valerio run in python using machine learning techniques
 		*----------------------------------------------------------------------------------------------------------------------------*
 			import delimited using "$data\final\potential_borrowers_top10_vars.csv", clear
 
 			**
-			gen 	group1 = 1 if probability >= 0.9 & !missing(probability)
-			gen 	group2 = 1 if probability >= 0.8 & probability < 0.9
-			gen 	group3 = 1 if probability >= 0.7 & probability < 0.8
-			gen 	group4 = 1 if probability >= 0.6 & probability < 0.7
-			gen 	group5 = 1 if probability >= 0.5 & probability < 0.6
-			gen 	group6 = 1 if probability <  0.5
+			gen 	group1 = 1 if probability >= 0.8 & !missing(probability)
+			gen 	group2 = 1 if probability >= 0.6 & probability < 0.8
+			gen 	group3 = 1 if probability >= 0.4 & probability < 0.6
+			gen 	group4 = 1 if probability <  0.4
 					
 			**
 			label define has_loan 0 "Credit-constrained firms" 1 "Loan approved in 2018" 
 			label val 	 has_loan has_loan
 			
 			**
-			graph pie group1 group2 group3 group4 group5 group6,  by(has_loan,  note("") graphregion(color(white)) cols(3))   ///
+			graph pie group1 group2 group3 group4,  by(has_loan,  note("") graphregion(color(white)) cols(3))   ///
 			pie(1, explode  color(navy*0.9)) pie(2, explode  color(navy*0.6))  pie(3, explode  color(emidblue))  pie(4, explode  color(emidblue*0.7)) pie(5, explode color(gs12)) pie(6, explode color(cranberry*0.6)) ///
 			plabel(_all percent,   						 gap(-10) format(%2.0fc) size(medsmall)) 												///
-			legend(order(1 "Prob > 90%" 2 "Prob > 80% & < 90%" 3 "Prob > 70% & < 80%" 4  "Prob > 60% & < 70%" 5 "Prob > 50% & < 60%" 6 "Prob < 50%") cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall)) ///
+			legend(order(1 "Prob > 80%" 2 "Prob > 80% & < 60%" 3 "Prob > 40% & < 60%" 4 "Prob < 40%") cols(2) pos(12) region(lstyle(none) fcolor(none)) size(medsmall)) ///
 			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 					 			///
 			plotregion(color(white)  fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 						 			///
 			note("", span color(black) fcolor(background) pos(7) size(small))																	///
@@ -508,20 +430,22 @@
 			keep if period == 2018
 
 			**
-			psmatch2 has_loan   	i.municipalityid lag1_employees sq_lag1_employees number_loans_up_t_minus1  		 ///
-								 sq_lag1_productivity_r lag1_productivity_r  lag1_turnover_r 	sq_lag1_turnover_r 	 ///
-								 lag1_avgrowth_turnover_r firms_age ///
-			, n(3) common ties	 //*has_loan   firms_age sq_firms_age i.municipalityid lag1_employees number_loans_up_t_minus1 sq_lag1_employees  sq_lag1_turnover_r lag1_productivity_r lag1_turnover_r sq_lag1_productivity_r ,  n(3) common ties	
-
-		
+			psmatch2 has_loan    i.municipalityid i.lag1_employees sq_lag1_employees number_loans_up_t_minus1  		 ///
+								 sq_lag1_productivity_r lag1_productivity_r  lag1_turnover_r 	sq_lag1_turnover_r 	 	 ///
+								 firms_age i.sectionid ///
+			, n(5) common ties	
 			
-			**
 			keep 		if _support == 1	& _weight  != .	
+
+			tab _treated
+
+			**
 			
 			
 			gen 		   _weight2  = _pscore/(1-_pscore) 	if  _treated == 0
 			replace 	   _weight2  = 1 					if 	_treated == 1
 
+			
 			**
 			gen 	group1 = 1 if _pscore >= 0.9 & !missing(_pscore)
 			gen 	group2 = 1 if _pscore >= 0.8 & _pscore < 0.9
@@ -567,43 +491,103 @@
 		
 		
 		
+	*--------------------------------------------------------->>>
+	**
+	*Credit creditworthiness -> Results of the machine learning models Simon run in Python
+	{
+		import 		delimited using "$data\final\potential_borrowers_top10_vars.csv", clear
+			rename probability prob_model2
+			tempfile	 top10
+			save 		`top10'
+		
+		import 		delimited using "$data\final\potential_borrowers.csv", clear
+		rename probability prob_model1
+			merge 1:1 fuid using `top10'
+
+			gsort 				has_loan -prob_model1
+			keep 		fuid 	has_loan prob*
+			order 		fuid 	has_loan prob_model1 prob_model2 
+			
+			format prob* %12.2fc
+			label var prob_model1 "Probability Loan - Model 1, inputing median values for missing data"
+			label var prob_model2 "Probability Loan - Model 2, not inputing data"
+			label var has_loan 	  "Loan approved in 2018"
+			label define has_loan 0 "No" 1 "Yes"
+			label val has_loan has_loan
+		
+			export excel using "$output\tables\ML Probability of Loan.xlsx", sheet("ML Results") firstrow(varlabels) replace
+	}
+		
 		
 		
 	*--------------------------------------------------------->>>
 	**
-	*Firms' characteristics by size 2015
+	*Balance test between:
+	
+		*1) firms with with loans approved in 2018 and
+		
+		*2) firms with no loans approved between 2010-2018
 	{
-		use "$data\final\firm_year_level.dta" if period == 2015 & active == 1, clear
-						
-			**
-			replace willclose_after2015 = willclose_after2015*100
-			replace had_loan_up2015     = had_loan_up2015*100
-			replace nocredit_history    = nocredit_history*100
-			replace turnover_r 			= turnover_r/1000							//outliers already replaced by missing in the do file 3. Setting up the IE Data. 
-			replace productivity_r 		= productivity_r/1000
-			label var turnover_r  		"Sales, thousands 2021 EUR" 
-			label var productivity_r  	"Productivity, thousands 2021 EUR" 
-			
-			**
-			tab 	sme
-			
-			drop if group_sme == 5
-			iebaltab turnover_r employees productivity_r willclose_after2015 nocredit_history,  format(%12.0fc %12.2fc) grpvar(group_sme) save("$output/tables/Firms' characteristics by size_2015.xls") 	rowvarlabels replace 
+		use 	"$data\final\firm_year_level.dta" if active == 1 & period == 2018 & main_dataset == 1, clear	
+		
+		**
+		tab sme if type_firm_panel == 0			//more than 98% of the firms that did not have access to credit between 2010-2018 are micro-firms. 
+		
+		**
+		keep 	if inlist(sme, "a.1-9") 			//micro-firms
+		
+		**
+		keep 	if type_firm_panel == 0 | (type_firm_panel == 1 & has_loan == 1)	//firms without loans in the whole period and firms with credit history and one loan approved in 2018
+		
+		**
+		replace export_tx 				= export_tx*100
+		replace import_tx 				= import_tx*100
+		replace has_credit_history 		= has_credit_history*100
+		replace turnover_r 				= turnover_r/1000
+		replace productivity_r 			= productivity_r/1000
+		replace wages_worker_r 			= wages_worker_r/1000
+		
+		label   var turnover_r  		"Sales, thousands 2021 EUR" 
+		label   var productivity_r  	"Productivity, thousands 2021 EUR" 
+		label   var wages_worker_r  	"Average wage, thousands 2021 EUR" 
 
-			**
-			/*
-			sumstats ///
-			(turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal  if group_sme == 1) ///
-			(turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal  if group_sme == 2) ///
-			using "test.xlsx", replace stats(mean sd n)
+		**
+		eststo clear
+		bys  type_firm_panel: eststo:  estpost sum employees turnover_r productivity_r wages_worker_r export_tx import_tx firms_age has_credit_history
+		esttab using "$output/tables/ Firms’ characteristics by access to credit_2018.csv", replace  cells("mean sd min max") nodepvar    
+
+		
+		**
+		*Distribution in the average growth rate in total sales and sales per employee
+		foreach var of varlist avgrowth_turnover_r avgrowth_productivity_r { 
 			
-			tabform  turnover_r employees productivity_r willclose_after2015 nocredit_history duration irate_nominal ///
-			using "$output\tables\Firms' characteristics by size_2015.xls", by(sme) sd sdbracket vertical
-			*/
+			if "`var'" == "avgrowth_turnover_r" 	{
+				local xtitle = "Annual growth sales"
+				local color olive_teal
+			}
+			
+			if "`var'" == "avgrowth_productivity_r" {
+				local xtitle = "Annual growth sales per employee"
+				local color orange*0.8
+			}	
+				
+			tw (histogram `var' if type_firm_panel == 0 ,  percent color(`color') fintensity(50))  (histogram `var'  if type_firm_panel == 1 ,  percent fcolor(none) lcolor(black)),   ///
+			legend(order(1 "Credit constrained firms" 2 "Firms with loans approved") pos(12) size(medium) cols(1) region(lwidth(white) lcolor(white) color(white) fcolor(white) )) 		 ///
+			ytitle("% firms", size(large)) ylabel(, nogrid labsize(large) format(%12.0fc)) 						 ///
+			xtitle("`xtitle'", size(medium)) xlabel(,labsize(small) format(%12.0fc)) 				 	 				 ///
+			title("", pos(12) size(medsmall) color(black)) 														 ///
+			subtitle("", pos(12) size(medsmall) color(black)) 													 ///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 	 ///
+			plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 ///
+			ysize(5) xsize(6) 																					 ///
+			note("", color(black) fcolor(background) pos(7) size(small)) 
+			graph export "$output/figures/av_`var'.pdf", as (pdf) replace
+		}
 	}
 	*________________________________________________________________________________________________________________________________*
 		
 		
+
 	
 	*--------------------------------------------------------->>>
 	**
@@ -707,64 +691,6 @@
 			
 		
 		
-	*--------------------------------------------------------->>>
-	**
-	**
-	*% loans by number of employees
-	*________________________________________________________________________________________________________________________________*
-	{		//the bigger the firm, the higher the % with loans
-		**
-		**
-		*----------------------------------------------------------------------------------------------------------------------------*
-		*----------------------------------------------------------------------------------------------------------------------------*
-		use "$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2015, 2017, 2018) , clear
-		*----------------------------------------------------------------------------------------------------------------------------*
-			
-			**
-			gen 		id = 1 
-			gen 		has_otherloan 	= 1   	if has_kcgf == 0     & has_loan  == 1
-			replace 	employees 		= 0   	if sme == "a.1-9"    & employees == .
-			replace 	employees 		= 20  	if  employees >  20  & employees < 50 
-			replace 	employees 		= 21  	if (employees >= 50  & employees < 250) | sme == "c.50-249"
-			replace 	employees 		= 22  	if (employees > 250  & employees != . ) | sme == "d.250+"
-			label 		define employees 0 "0 or N/A" 20 "20-49" 21 "50-249" 22 "250+" 
-			label 		val employees employees
-			
-			**
-			replace 	period = 2017 			if period == 2018
-			
-			**
-			collapse (sum) has_kcgf  id has_otherloan, by(employees period)
-			gen 		share_kcgf  = (has_kcgf/ id)*100
-			gen 		share_loans = (has_otherloan/ id)*100
-			
-			**
-			*Average between 2017-2018
-			graph bar (asis)share_kcgf share_loans if inlist(period,2017),  bar(1, color(navy) fintensity(inten30)) bar(2, color(cranberry) fintensity(inten30)) 		///
-			 over(employees, sort() label(labsize(medium) angle(45)) ) stack 																	///
-			blabel(bar, position(outside) orientation(horizontal) size(large) color(black) format (%4.0fc))   								 	///
-			ytitle("% firms with loans", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
-			yscale(line ) ///
-			legend(order(1  "KCGF"  2 "Other loans"  ) region(lwidth(none) color(white) fcolor(none)) cols(3) size(large) position(12)) 		///	
-			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
-			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
-			ysize(6) xsize(10) 																						
-			graph export "$output\figures\share with loans by employees_2017-2018.pdf", as(pdf) replace	
-			
-			**
-			*Average in 2015
-			graph bar (asis)share_loans if inlist(period, 2015),   bar(1, color(cranberry) fintensity(inten30)) 								///
-			 over(employees, sort() label(labsize(medium) angle(45)) ) stack 																	///
-			blabel(bar, position(outside) orientation(horizontal) size(large) color(black) format (%4.0fc))   								 	///
-			ytitle("% firms with loans", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
-			yscale(line ) 		///
-			legend(off) 		///	
-			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
-			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
-			ysize(6) xsize(10) 																						
-			graph export "$output\figures\share with loans by employees_2015.pdf", as(pdf) replace		
-	}
-	
 	
 	
 	*--------------------------------------------------------->>>
@@ -976,13 +902,14 @@
 			**
 			**Descriptives of KCGF loans
 			gen 		id   = 1
-			collapse (sum) id loanamount_r (median) average_loan_r collateralvalue_r shareloan_turnover duration irate_nominal total_interest (mean) economic_recovery, by(period Product)
+			collapse (sum) id loanamount_r (median) turnover_r average_loan_r collateralvalue_r shareloan_turnover duration irate_nominal total_interest (mean) economic_recovery, by(period Product)
 			
 			**
 			replace economic_recovery = economic_recovery*100
 						
 			**
-			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery					if Product == "Total"
+			order   period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery
+			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery turnover_r					if Product == "Total"
 			
 			**
 			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery				    if Product != "Total" & period == 2021
@@ -1275,3 +1202,190 @@
 			
 			
 			
+	
+	use   "$data\inter\KCGF.dta" if period == 2021 & LoanStatus != "Canceled" & inlist(size_kcgf, 1,2,3), clear	//not including large companies
+
+	keep 	if inlist(duration,12,24,36,48,60)
+	gen 	 turnover_r2021 = turnover_r
+	gen lowerturnover_r2021 = turnover_r
+	gen upperturnover_r2021 = turnover_r
+	
+	
+	rename (interest1-interest6) (interest2022 interest2023 interest2024 interest2025 interest2026 interest2027)
+	
+	foreach year in 2022 2023 2024 2025 2026 {
+		local 	yearn = `year'- 1
+		gen 	lowerturnover_r`year'	= lowerturnover_r`yearn'*1.02
+		gen 	turnover_r`year'		= turnover_r`yearn'*1.08
+		gen 	upperturnover_r`year'	= upperturnover_r`yearn'*1.12
+
+		gen 	a`year' = interest`year'/lowerturnover_r`year'
+		gen 	 	 b`year' = interest`year'/turnover_r`year'
+		gen     c`year' = interest`year'/upperturnover_r`year'
+	}	
+	gen fuid = _n
+	drop turnover_r
+	keep fuid a* b* c* turnover* lower* upper* interest2022-interest2027
+
+
+	
+	reshape long a b c turnover_r lowerturnover_r upperturnover_r interest, i(fuid) j(period)
+
+		collapse (median)a b c *turnover* interest* , by(period)
+
+	
+		tw line interest period 
+	
+	
+	collapse (median)a b c , by(period)
+	
+	replace a 
+					
+					twoway    bar b period, ml() barw(0.6) color(emidblue)   || ///
+					rcap a c period , lcolor(navy)	///
+						xtitle("", size(medsmall)) 											  																											///
+						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
+						ylabel(0.01(0.005)0.03) ///
+						xscale(r()) 																																								///
+						title(, size(medsmall) color(black)) 																																			///
+						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
+						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
+						legend(order(1 "Estimate %, sales" 7 "Estimate %, productivity" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
+						ysize(4) xsize(7)  ///
+						note("", color(black) fcolor(background) pos(7) size(small)) 
+	
+	
+	
+							twoway    bar att model if model == 1 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+							   || bar att model if model == 3 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+
+	
+						twoway    bar att model if model == 1 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 2 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+							   || bar att model if model == 3 & variable == 1, ml(att) barw(0.6) color(emidblue)   || bar att model if model == 4 & variable == 1, barw(0.6) color(emidblue)   || rcap lower upper model if variable == 1, lcolor(navy)	///
+							   || bar att model if model == 5 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 6 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
+							   || bar att model if model == 7 & variable == 3, ml(att) barw(0.6) color(cranberry)  || bar att model if model == 8 & variable == 3, barw(0.6) color(cranberry)  || rcap lower upper model if variable == 3, lcolor(navy)	///
+						xtitle("", size(medsmall)) 											  																											///
+						ytitle("", size(small)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.1fc))  																///					
+						xlabel(1 `" "Model 1" "' 2 `" "Model 2" "' 3 `" "Model 3" "' 4 `" "Model4" "' 5 `" "Model 1" "' 6 `" "Model 2" "' 7 `" "Model 3" "' 8 `" "Model4" "', labsize(small) ) 									///
+						xscale(r()) 																																								///
+						xline(4.5, lpattern(shortdash) lcolor(cranberry)) ///
+						title(, size(medsmall) color(black)) 																																			///
+						graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))		 																		///
+						plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 																				///						
+						legend(order(1 "Estimate %, sales" 7 "Estimate %, productivity" 3 "95% CI" ) span cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall))  																///
+						text(35 2.5 "Increase in sales, %") 																																							///
+						text(35 6.5 "Increase in productivity, %") 																																						///
+						ysize(4) xsize(7)  ///
+						note("", color(black) fcolor(background) pos(7) size(small)) 
+						graph export "$output/figures/results1.pdf", as(pdf) replace
+
+
+						
+						/*
+	*--------------------------------------------------------->>>
+	**
+	*PSmatch
+	
+	*Which are the firms' characteristics that increase their probability of having an approved loan?
+	{
+
+		**
+		*
+		use 		"$data\final\firm_year_level.dta", clear
+	
+		**
+		**
+		sort 		fuid period
+		replace 	qua_productivity_r2017  		= l1.qua_productivity_r2017 		if period == 2018
+		replace 	qua_turnover_r2017 				= l1.qua_turnover_r2017				if period == 2018
+		replace 	qua_avgrowth_turnover_r2017  	= l1.qua_avgrowth_turnover_r2017	if period == 2018
+		
+		keep if 	period == 2018
+		
+		
+		**
+		*Probability of loan
+		reg 		has_loan 	 i.municipalityid lag1_employees sq_lag1_employees number_loans_up_t_minus1  		 ///
+								 sq_lag1_productivity_r lag1_productivity_r  lag1_turnover_r 	sq_lag1_turnover_r 	 ///
+								 lag1_avgrowth_turnover_r firms_age i.period i.fuid
+									
+		xtset fuid period
+											
+		predict  xb 			//probability of treatment according to the model
+		su 		 xb, detail
+		replace  xb = . if xb <= r(p1) | xb >= r(p99)
+
+		
+		**
+		**
+		keep 	if group_sme == 1 | group_sme == 2
+
+		
+		**
+		*Average probability (and CI) of loan according to firms' characteristics
+		matrix results = (0,0,0,0,0)
+		local xvar = 1
+		rename qua_avgrowth_turnover_r2017 qua_turnover
+		foreach variable in lag1_employees qua_productivity_r2017  qua_turnover number_loans_up_t_minus1 {
+			preserve
+			if "`variable'" == "lag1_employees" keep if lag1_employees < 30
+			levelsof `variable', local(`variable'_list) 
+			foreach code in ``variable'_list' {
+				ci means xb if `variable' == `code'
+				matrix results = results\(`xvar', `code', r(mean), r(lb), r(ub))
+			}
+			local xvar = `xvar' + 1
+			restore
+		}
+		
+		**	
+		*Probability of loan, CI, and variables under analysis and its values (employees, productivity, credit history)
+		clear 
+		svmat results
+		drop in 1
+		rename (results1-results5) (variable code xb lower upper)	
+
+		**
+		*Figures
+		foreach variable in 1 2 3 4  {
+			     
+				if `variable' == 1   local xtitle = "Number  of employees in 2017"
+				
+				if `variable' == 2   local xtitle = "Deciles of sales per employee in 2017"
+
+				if `variable' == 3   local xtitle = "Deciles of turnover growth in 2017" 	
+
+				if `variable' == 4   local xtitle = "Credit history (number loans in until 2017)"		
+
+				
+				tw 	///
+				(rarea lower upper 	code if variable == `variable' , fcolor(gs12%30) lcolor(bg) fintensity(50)) ///
+				(line  xb 			code if variable == `variable' , lcolor(cranberry) lwidth(0.5) lp(shortdash)  ///  			
+				ylabel(,  labsize(medium) nogrid gmax angle(horizontal) format(%12.3fc)) ysca()  ///
+				///
+				ytitle("Probability", size(medium))   ///
+				///
+				xtitle("`xtitle'", size(medium)) ///
+				///
+				xlabel(, angle(360) labsize(medium)) ///
+				///
+				title("`title'", pos(12) size(medlarge) color(black)) ///
+				///
+				subtitle(, pos(12) size(medsmall) color(black)) ///
+				///
+				graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) ///
+				///
+				plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) ///
+				///
+				legend(order(1 "95% CI"  2 "Probability of approved loan in 2018" ) region(lwidth(none)) cols(1) size(medium) position(11) bplacement(seast)) ///
+				///
+				ysize(5) xsize(7)	 ///
+				///
+				note("", color(black) fcolor(background) pos(7) size(small))) 
+				graph export "$output/figures/probability_`variable'.emf", as(emf) replace
+				graph export "$output/figures/probability_`variable'.pdf", as(pdf) replace
+				}
+	}
+	*________________________________________________________________________________________________________________________________*
+		
+

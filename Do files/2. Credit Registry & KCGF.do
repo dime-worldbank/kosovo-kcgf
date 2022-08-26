@@ -10,8 +10,10 @@
 		Dataset shared by the Central Bank of Kosovo -> I replaced duration and interest rates by missing if they are equal to 0
 													    I replaced duration and interest rates by missing if they are in the bottom 5% or top 95%
 			
+			
+			
 		Dataset shared by KCGF-						 -> I replaced  duration and interest rates by missing if they are in the bottom 5% or top 95%
-													 -> I calculated the loan amount divided by the turnover and excluded the bottom 5% or top 95%
+													 -> I calculated the loan amount divided by the turnover and excluded the bottom 5% or top 95% (It does not make sense the firm get a loan that is more than double of their turnover. )
 													 -> I replaced the variable employees by missing if it is = 0
 		
 		*/
@@ -272,12 +274,6 @@
 				
 				replace 	size_creditdata 	=  		group_sme if _merge == 3 //for the firms we found in tax registry, lets replace their size
 				drop	 	_merge
-				/*
-				replace     size_creditdata 	= 1 	if sme		== "a.1-9"		& size_creditdata == 5
-				replace     size_creditdata 	= 2 	if sme		== "b.10-49"	& size_creditdata == 5
-				replace     size_creditdata 	= 3 	if sme		== "c.50-249"	& size_creditdata == 5
-				replace     size_creditdata 	= 4 	if sme		== "d.250+"		& size_creditdata == 5
-				*/
 				*--------------------------------------------------------------------------------------------------------------------------------->>
 
 				**
@@ -377,7 +373,7 @@
 				//variable size is also available in the credit registry data, thats why I rename the variable here. 
 				//when we merge loan dataset with tax registry dataset, we can use this variable in case the variable size is missing in tax registry
 					//same year, different loan ids and the same firm is registered with distinct sizes
-				bys 	fuid period:egen A = mode(size_creditdata)
+				bys 	fuid period: egen A = mode(size_creditdata)
 				count 											 		if A != size_creditdata			
 				gen 	error = 1 										if A != size_creditdata
 				bys 	fuid period: egen max_error = max(error)
@@ -447,19 +443,25 @@
 				**
 				*Payment of interest rates
 				gen 	 installment = loanamount_r/duration
+
+				foreach size_creditdata in 1 2 3 4 5 {
+					su 		installment											if size_creditdata == `size_creditdata', detail
+					replace	installment	= . 									if size_creditdata == `size_creditdata' & (installment	 < r(p5) | installment	 > r(p95))
+				}
+
 				
-				gen interestmonth 		= ((((1+irate_nominal/100)^(1/12))^duration)-1)*loanamount_r					 	if duration < 12  
-				gen interest1 			=     (irate_nominal/100)*loanamount_r 												if duration >= 12 					& !missing(duration)
-				gen interest2 			= (((1+irate_nominal/100)^2) - 1)*(loanamount_r - 12*installment) 					if duration >= 24					& !missing(duration)
-				gen interest3 			= (((1+irate_nominal/100)^3) - 1)*(loanamount_r - 24*installment) 					if duration >= 36					& !missing(duration)
-				gen interest4 			= (((1+irate_nominal/100)^4) - 1)*(loanamount_r - 36*installment) 					if duration >= 48					& !missing(duration)
-				gen interest5 			= (((1+irate_nominal/100)^5) - 1)*(loanamount_r - 48*installment) 					if duration >= 60					& !missing(duration)
-				gen interest6 			= (((1+irate_nominal/100)^6) - 1)*(loanamount_r - 60*installment) 					if duration >= 72					& !missing(duration)
-				gen interest1months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 12*installment) 	if duration > 12 & duration < 24
-				gen interest2months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 24*installment)  	if duration > 24 & duration < 36
-				gen interest3months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 36*installment)  	if duration > 36 & duration < 48
-				gen interest4months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 48*installment)  	if duration > 48 & duration < 60
-				gen interest5months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 60*installment)  	if duration > 60 & duration < 72
+				gen interestmonth 		= ((((1+irate_nominal/100)^(1/12))^duration)-1)*loanamount_r					 	if duration < 12  											& !missing(installment)
+				gen interest1 			=     (irate_nominal/100)*loanamount_r 												if duration >= 12 					& !missing(duration)	& !missing(installment)
+				gen interest2 			= (((1+irate_nominal/100)^2) - 1)*(loanamount_r - 12*installment) 					if duration >= 24					& !missing(duration)	& !missing(installment)
+				gen interest3 			= (((1+irate_nominal/100)^3) - 1)*(loanamount_r - 24*installment) 					if duration >= 36					& !missing(duration)	& !missing(installment)
+				gen interest4 			= (((1+irate_nominal/100)^4) - 1)*(loanamount_r - 36*installment) 					if duration >= 48					& !missing(duration)	& !missing(installment)
+				gen interest5 			= (((1+irate_nominal/100)^5) - 1)*(loanamount_r - 48*installment) 					if duration >= 60					& !missing(duration)	& !missing(installment)
+				gen interest6 			= (((1+irate_nominal/100)^6) - 1)*(loanamount_r - 60*installment) 					if duration >= 72					& !missing(duration)	& !missing(installment)
+				gen interest1months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 12*installment) 	if duration > 12 & duration < 24							& !missing(installment)
+				gen interest2months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 24*installment)  	if duration > 24 & duration < 36							& !missing(installment)
+				gen interest3months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 36*installment)  	if duration > 36 & duration < 48							& !missing(installment)
+				gen interest4months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 48*installment)  	if duration > 48 & duration < 60							& !missing(installment)
+				gen interest5months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 60*installment)  	if duration > 60 & duration < 72							& !missing(installment)
 				egen total_interest = rowtotal(interest*), missing
 			
 				br 	 loanamount_r total_interest duration irate_nominal interest* 
@@ -630,15 +632,15 @@
 						}
 					}
 					
-					foreach size_kcgf in 1 2 3 		  {
+					foreach size_kcgf in 1 2 3 4 5 		  {
 						su 		turnover_r 	    	if size_kcgf == `size_kcgf', detail
-						replace turnover_r  = . 	if size_kcgf == `size_kcgf' & (turnover_r < r(p5) | turnover_r > r(p95))
+						replace turnover_r  = . 	if size_kcgf == `size_kcgf' & (turnover_r <= r(p5) | turnover_r >= r(p95))
 					}
 					
 					gen     productivity_r   = turnover_r/employees	//sales divided by number of employees
-					foreach size_kcgf in 1 2 3 		  {
+					foreach size_kcgf in 1 2 3 4 5  	  {
 						su 		productivity_r		if size_kcgf == `size_kcgf', detail
-						replace productivity_r = . 	if size_kcgf == `size_kcgf' & (productivity_r < r(p5) | productivity_r > r(p95))
+						replace productivity_r = . 	if size_kcgf == `size_kcgf' & (productivity_r <= r(p5) | productivity_r >= r(p95))
 					}
 					
 					
@@ -646,44 +648,45 @@
 					*Loan amount as % of turnover
 					*---------------------------------------------------------------------------------------------------------------------------------->>
 					clonevar temp = loanamount_r
-					foreach size_kcgf in 1 2 3 		  {
+					foreach size_kcgf in 1 2 3 4 5		  {
 						su 		 temp		if size_kcgf == `size_kcgf', detail
 						replace  temp = . 	if size_kcgf == `size_kcgf' & ( temp < r(p5) |  temp > r(p95))
 					}
 					gen 		shareloan_turnover 		= (temp/turnover_r)*100
 					su			shareloan_turnover		, detail
 					replace 	shareloan_turnover 		= . 	if shareloan_turnover < r(p5) | shareloan_turnover > r(p95)
-					drop temp
 					*---------------------------------------------------------------------------------------------------------------------------------->>
 
 					**
 					*Payment of interest rates
 					gen 	 installment = loanamount_r/duration
-					replace irate_nominal = (1+(irate_nominal/100))^(12)
-				
-					gen interest2 			= (((1+irate_nominal/100)^2) - 1)*(loanamount_r - 12*installment) 					if duration >= 24					& !missing(duration)
-					gen interest3 			= (((1+irate_nominal/100)^3) - 1)*(loanamount_r - 24*installment) 					if duration >= 36					& !missing(duration)
-					gen interest4 			= (((1+irate_nominal/100)^4) - 1)*(loanamount_r - 36*installment) 					if duration >= 48					& !missing(duration)
-					gen interest5 			= (((1+irate_nominal/100)^5) - 1)*(loanamount_r - 48*installment) 					if duration >= 60					& !missing(duration)
-					gen interest6 			= (((1+irate_nominal/100)^6) - 1)*(loanamount_r - 60*installment) 					if duration >= 72					& !missing(duration)
-					gen interest1months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 12*installment)  	if duration > 12 & duration < 24
-					gen interest2months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 24*installment)  	if duration > 24 & duration < 36
-					gen interest3months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 36*installment)  	if duration > 36 & duration < 48
-					gen interest4months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 48*installment)  	if duration > 48 & duration < 60
-					gen interest5months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(loanamount_r - 60*installment)  	if duration > 60 & duration < 72
+					
+					foreach size_kcgf in 1 2 3 4 5 {
+						su 		installment											if size_kcgf == `size_kcgf', detail
+						replace	installment	= . 									if size_kcgf == `size_kcgf' & (installment	 < r(p5) | installment	 > r(p95))
+					}
+
+					gen interest1 			=     (irate_nominal/100)*temp 												if duration >= 12 					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest2 			= (((1+irate_nominal/100)^2) - 1)*(temp - 12*installment) 					if duration >= 24					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest3 			= (((1+irate_nominal/100)^3) - 1)*(temp - 24*installment) 					if duration >= 36					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest4 			= (((1+irate_nominal/100)^4) - 1)*(temp - 36*installment) 					if duration >= 48					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover) 
+					gen interest5 			= (((1+irate_nominal/100)^5) - 1)*(temp - 48*installment) 					if duration >= 60					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest6 			= (((1+irate_nominal/100)^6) - 1)*(temp - 60*installment) 					if duration >= 72					& !missing(duration)	& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest1months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(temp - 12*installment)  	if duration > 12 & duration < 24							& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest2months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(temp - 24*installment)  	if duration > 24 & duration < 36							& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest3months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(temp - 36*installment)  	if duration > 36 & duration < 48							& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest4months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(temp - 48*installment)  	if duration > 48 & duration < 60							& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
+					gen interest5months 	= ((((1+irate_nominal/100)^(1/12))^duration)-1)*(temp - 60*installment)  	if duration > 60 & duration < 72							& !missing(installment) & !missing(temp) & !missing(shareloan_turnover)
 					egen total_interest = rowtotal(interest*), missing
 					
-					br loanamount_r installment irate_nominal interest1* if duration == 12
-					format *amount* %15.2fc
+					
+
+					br 		loanamount_r  temp  turnover_r shareloan_turnover installment irate_nominal interest1* if duration == 24
+					format 	*amount* %15.2fc
+					drop temp
 					compress
 					save "$data\inter\KCGF.dta", replace	
 			}
 		*______________________________________________________________________________________________________________________________________*
 			
-			
-			
-			
-			
-			
-			
-	
+
