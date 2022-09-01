@@ -148,12 +148,9 @@
 	   global user  1
 		   
 		 if $user == 1 {
-			global projectfolder 		"C:\Users\wb495845\OneDrive - WBG\Kosovo\DataWork" 
-			global firmdynamics			"C:\Users\wb495845\OneDrive - WBG\Kosovo\IFC_Firm Dynamics and Productivity"
+			global projectfolder 		"C:\Users\wb495845\OneDrive - WBG\IV. Firms\Kosovo\DataWork" 
 			global data		    	 	"$projectfolder\data"
 			global output        		"$projectfolder\output"
-			global code_firmdynamics	"$firmdynamics\do files"
-			global data_firmdynamics	"$firmdynamics\data"
 			global dofiles       	 	"C:\Users\wb495845\OneDrive - WBG\Documents\GitHub\kosovo-kcgf\Do files"
 		}
 

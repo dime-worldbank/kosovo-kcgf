@@ -232,37 +232,6 @@
 	}
 	
 	
-
-	
-	
-	*--------------------------------------------------------->>>
-	**
-	**
-	*Firms with loans by size
-	*________________________________________________________________________________________________________________________________*
-	{	//the bigger the firm, the higher the % with loans
-		**
-		**
-		*----------------------------------------------------------------------------------------------------------------------------*
-		*----------------------------------------------------------------------------------------------------------------------------*
-		use "$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2015) & group_sme < 5 , clear
-		*----------------------------------------------------------------------------------------------------------------------------*
-				
-			**
-			graph pie has_loan,  over(group_sme)   ///
-			pie(1, explode  color(emidblue)) pie(2, explode  color(navy*0.6))  pie(3, explode  color(emidblue))  pie(4, explode  color(emidblue*0.7)) pie(5, explode color(gs12)) pie(6, explode color(cranberry*0.6)) ///
-			plabel(_all percent,   						 gap(-10) format(%2.0fc) size(medsmall)) 												///
-			legend(order(1 "Prob > 90%" 2 "Prob > 80% & < 90%" 3 "Prob > 70% & < 80%" 4  "Prob > 60% & < 70%" 5 "Prob > 50% & < 60%" 6 "Prob < 50%") cols(3) pos(12) region(lstyle(none) fcolor(none)) size(medsmall)) ///
-			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 					 			///
-			plotregion(color(white)  fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 						 			///
-			note("", span color(black) fcolor(background) pos(7) size(small))																	///
-			ysize(4) xsize(6) 	
-			graph export "$output/figures/ML_probability_loan.pdf", as(pdf) replace	
-			graph export "$output/figures/ML_probability_loan.emf", as(emf) replace	
-			
-
-	}
-	
 		
 	*--------------------------------------------------------->>>
 	**
@@ -388,7 +357,7 @@
 			
 			
 			**
-			gen period = 2018
+
 			merge 1:1 fuid period using "$data\final\firm_year_level.dta", keep(1 3) keepusing(sme) nogen
 
 			**
