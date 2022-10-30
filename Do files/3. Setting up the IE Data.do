@@ -52,7 +52,7 @@
 			use "$data\inter\Tax Registry.dta", clear   					//Turnover = 0 or missing, how to interpret?
 				drop 		group_sme
 				merge 		1:1 fuid period 	using  `loans', 
-				
+				rename operational_profit profit
 				**
 				**
 				gen 		 formal = _merge != 2							//firm only foud in credit data -> evidence of informality according to Blerta (Financial Private Sector Specialist WB).
@@ -107,17 +107,18 @@
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				bys 		fuid: gen obs = _N
 				gen 		nosales =  (turnover == 0 | turnover == .) & formal == 1
-				bys 		fuid: egen total = sum(nosales)
-				count 										if total == obs 	//all the years in the dataset, no sales registered
+				bys 		fuid: egen total_nosales = sum(nosales)
+				count 										if total_nosales == obs 		//all the years in the dataset, no sales registered
 				sort 		fuid period
-				br 			fuid period turnover obs total 	if total == obs	
-				tab 		formal 							if total == obs		//all the firms in this situation are "formal"
+				br 			fuid period turnover obs total_nosales 	if total_nosales == obs	
+				tab 		formal 									if total_nosales == obs			//all the firms in this situation are "formal"
+				
 				
 					*Exclusions -> firms that have never registered any sales in the dataset 
 					*------------------------------>>>>>
 					*------------------------------>>>>>
-					drop 									if total == obs		// firms that have never registered any turnover 
-					drop 									   total    obs	nosales	//firms that in all the panel years turnover is always 0 or missing
+					*drop 									if total_nosales == obs			// firms that have never registered any turnover 
+					*drop 									   total_nosales    obs	nosales	//firms that in all the panel years turnover is always 0 or missing
 					*------------------------------>>>>>
 					*------------------------------>>>>>
 				
@@ -191,33 +192,38 @@
 				local 		ppi2010 81.78486712
 				keep if 	period >= 2010
 				forvalues 	period  = 2010(1)2021 {
-					foreach var of varlist turnover salaries exports_amount imports_amount {
+					foreach var of varlist turnover profit salaries exports_amount imports_amount {
 						if `period' == 2010 gen 	`var'_r = (`var')/(`ppi`period''/100) if period == `period'
 						if `period' != 2010 replace `var'_r = (`var')/(`ppi`period''/100) if period == `period'
 					}
 				}				
-				drop turnover salaries exports_amount imports_amount
+				drop turnover salaries exports_amount imports_amount profit
 				
+				clonevar turnover_r_all = turnover_r
 				
 				**
 				*Outliers by firms' size
 				*------------------------------------------------------------------------------------------------------------------------------>>
-
-				foreach var of varlist  turnover_r salaries_r exports_amount_r imports_amount_r  	{
-					foreach sme in 1 2 3 4 5														{
+				foreach var of varlist turnover_r  salaries_r exports_amount_r imports_amount_r  profit_r			{ //
+					replace `var' = . if `var' <= 0
+				}
+				
+				foreach var of varlist turnover_r 	 salaries_r exports_amount_r imports_amount_r  profit_r			{ //
+					foreach sme in 1 2 3 4 5																		{
 							su 		`var' 		if group_sme == `sme', detail
 							replace `var' = . 	if group_sme == `sme' & (`var' <= r(p5) | `var' >= r(p95))
 					}
 				}				
-								
+					
 				**
 				*Productivity -> sales per employee
 				*---------------------------------------------------------------------------------------------------------------------------------->>
-				gen 	productivity_r = turnover_r/employees 	//sales divided by the number of employees
-				gen 	wages_worker_r = salaries_r/employees  	//total wages divided by the number of employees
+				gen 	productivity_r    = turnover_r/employees 	//sales divided by the number of employees
+				gen 	prof_em_r 		  = profit_r/employees
+				gen 	wages_worker_r    = salaries_r/employees  	//total wages divided by the number of employees
 				
-				foreach var of varlist productivity_r wages_worker_r  {
-					foreach sme in 1 2 3 4 5						  {
+				foreach var of varlist productivity_r wages_worker_r prof_em_r 	{
+					foreach sme in 1 2 3 4 5						  			{
 							su 		`var' 		if group_sme == `sme', detail
 							replace `var' = . 	if group_sme == `sme' & (`var' < r(p5) | `var' > r(p95))
 					}
@@ -301,7 +307,7 @@
 				*Lag values
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				sort fuid period
-				foreach var of varlist group_sme wages_worker_r turnover_r productivity_r employees num_loans  {
+				foreach var of varlist group_sme wages_worker_r turnover_r productivity_r employees num_loans prof_em_r  {
 					gen lag1_`var' = l1.`var'
 					gen lag2_`var' = l2.`var'
 					gen lag3_`var' = l3.`var'
@@ -370,10 +376,10 @@
 				**Number of loans until t-1 (in period t, lets check how many loans the firm have had up to t-1, a measure of credit history)
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				egen 		number_loans_up_t_minus1 = rsum(lag1_num_loans lag2_num_loans lag3_num_loans lag4_num_loans lag5_num_loans lag6_num_loans lag7_num_loans lag8_num_loans)
-				
+								
 				foreach 	sme in 1 2 3 4 5							  {
 				su	     	number_loans_up_t_minus1					if group_sme == `sme', detail
-				replace  	number_loans_up_t_minus1				=. 	if group_sme == `sme' & number_loans_up_t_minus1 > r(p95)
+				*replace  	number_loans_up_t_minus1				=. 	if group_sme == `sme' & number_loans_up_t_minus1 > r(p95)
 				}
 		
 				gen 		has_credit_history  = number_loans_up_t_minus1 > 0
@@ -433,7 +439,7 @@
 				
 				*Squared values
 				*------------------------------------------------------------------------------------------------------------------------------>>
-				global 		covars firms_age  productivity_r wages_worker_r employees lag* num_loans number_loans_up2015 number_loans_up_t_minus1
+				global 		covars firms_age  profit_r productivity_r wages_worker_r employees lag* num_loans number_loans_up2015 number_loans_up_t_minus1
 				foreach 	var of varlist $covars {
 					gen 	sq_`var' = `var'^2 
 				}
@@ -442,24 +448,26 @@
 				*Average growth in the last years
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				sort fuid period
-				foreach 	var of varlist productivity_r employees turnover_r {
+				foreach 	var of varlist productivity_r prof_em_r employees turnover_r {
 				gen			avgrowth_`var' = ((`var'/lag1_`var') - 1)*100  if main_dataset == 1
 				su 			avgrowth_`var', detail
 				replace 	avgrowth_`var' = . if avgrowth_`var' <= r(p10) | avgrowth_`var' >= r(p90)
 				}
 
-				gen 	lag1_avgrowth_productivity_r = l1.avgrowth_productivity_r
-				gen 	lag1_avgrowth_employees		 = l1.avgrowth_employees
-				gen 	lag1_avgrowth_turnover_r 	 = l1.avgrowth_turnover_r
+				gen 	lag1_avgrowth_productivity_r 	= l1.avgrowth_productivity_r
+				gen 	lag1_avgrowth_employees		 	= l1.avgrowth_employees
+				gen 	lag1_avgrowth_turnover_r 	 	= l1.avgrowth_turnover_r
+				gen 	lag1_avgrowth_prof_em_r  		= l1.avgrowth_prof_em_r
 
 				*Quantiles productivity
 				*------------------------------------------------------------------------------------------------------------------------------>>
 				
 				forvalues 	period = 2010(1)2021 {
-				cap noi quantiles productivity_r 		if period == `period' & active == 1 ,  n(10) gencatvar(qua_productivity_r`period')
-				cap noi quantiles turnover_r 		 	if period == `period' & active == 1 ,  n(10) gencatvar(qua_turnover_r`period')
-				cap noi quantiles wages_worker_r	 	if period == `period' & active == 1 ,  n(10) gencatvar(qua_wages_worker_r`period')
-				cap noi quantiles avgrowth_turnover_r   if period == `period' & active == 1 ,  n(10) gencatvar(qua_avgrowth_turnover_r`period')
+				cap noi quantiles productivity_r 				if period == `period' & active == 1 ,  n(10) gencatvar(qua_productivity_r`period')
+				cap noi quantiles turnover_r 		 			if period == `period' & active == 1 ,  n(10) gencatvar(qua_turnover_r`period')
+				cap noi quantiles wages_worker_r	 			if period == `period' & active == 1 ,  n(10) gencatvar(qua_wages_worker_r`period')
+				cap noi quantiles avgrowth_turnover_r   		if period == `period' & active == 1 ,  n(10) gencatvar(qua_avgrowth_turnover_r`period')
+				cap noi quantiles avgrowth_prof_em_r    		if period == `period' & active == 1 ,  n(10) gencatvar(qua_avgrowth_prof_em_r`period')
 				}
 				
 				**
@@ -483,6 +491,9 @@
 				label 		var avgrowth_turnover_r			"Annual average growth in sales, %"
 				
 				gen 		nonmissing = 1 if turnover_r != . & productivity_r != . & employees != .
+				
+				label define group_sme 1 "Micro" 2 "Small" 3 "Medium" 4 "Large" 
+				label val group_sme group_sme
 				**
 				**
 				sort 		fuid period

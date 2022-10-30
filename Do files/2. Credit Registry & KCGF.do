@@ -13,7 +13,7 @@
 			
 			
 		Dataset shared by KCGF-						 -> I replaced  duration and interest rates by missing if they are in the bottom 5% or top 95%
-													 -> I calculated the loan amount divided by the turnover and excluded the bottom 5% or top 95% (It does not make sense the firm get a loan that is more than double of their turnover. )
+													 -> I calculated the loan amount divided by the turnover and replace by missing the bottom 5% or top 95% (It does not make sense the firm get a loan that is more than double of their turnover. )
 													 -> I replaced the variable employees by missing if it is = 0
 		
 		*/
@@ -296,6 +296,7 @@
 				label values collateral collateral
 				*--------------------------------------------------------------------------------------------------------------------------------->>
 				
+				
 				*
 				*Insolvency
 				*--------------------------------------------------------------------------------------------------------------------------------->>
@@ -360,10 +361,15 @@
 				
 				sort 				fuid loanid ApprovedMonthYear 
 				
+				egen du = tag(fuid loanid)
+				
+				br 					fuid loanid du ApprovedMonthYear maturity irate_nominal loanamount loanperiod loanclass  loanduration duration  loanpurpose payfreq
+				
 				duplicates drop 	fuid loanid ApprovedMonthYear, force 
 				
 				br 					fuid loanid ApprovedMonthYear maturity irate_nominal loanamount loanperiod loanclass  loanduration duration  loanpurpose payfreq
-
+				
+				drop du
 					
 					
 				**
@@ -471,7 +477,7 @@
 				
 				br 		fuid period loanid size_creditdata loanamount loanclass loanperiod loanduration maturity fund fundcoverage irate_nominal irate_effec
 				bys 	period fuid: gen t = _N
-				su 		t, detail  //each row is some companies
+				su 		t, detail 
 				sort 	fuid period
 				sort 	t
 			    br 		t fuid period loanid approvaldate loanamount duration maturity irate_* loanclass fund approvaldate if t > 100
@@ -608,6 +614,7 @@
 					*---------------------------------------------------------------------------------------------------------------------------------->>
 					gen 		economic_recovery = Product == "Economic Recovery Window"	//identifying if a loan is Economic Recovery Window. 
 					
+					
 					**
 					*Amounts in EUR 2021
 					*--------------------------------------------------------------------------------------------------------------------------------->>
@@ -634,7 +641,7 @@
 					
 					foreach size_kcgf in 1 2 3 4 5 		  {
 						su 		turnover_r 	    	if size_kcgf == `size_kcgf', detail
-						replace turnover_r  = . 	if size_kcgf == `size_kcgf' & (turnover_r <= r(p5) | turnover_r >= r(p95))
+						replace turnover_r  = . 	if size_kcgf == `size_kcgf' & (turnover_r     <= r(p5) | turnover_r     >= r(p95))
 					}
 					
 					gen     productivity_r   = turnover_r/employees	//sales divided by number of employees
@@ -650,7 +657,7 @@
 					clonevar temp = loanamount_r
 					foreach size_kcgf in 1 2 3 4 5		  {
 						su 		 temp		if size_kcgf == `size_kcgf', detail
-						replace  temp = . 	if size_kcgf == `size_kcgf' & ( temp < r(p5) |  temp > r(p95))
+						replace  temp = . 	if size_kcgf == `size_kcgf' & ( temp      < r(p5) |  temp              > r(p95))
 					}
 					gen 		shareloan_turnover 		= (temp/turnover_r)*100
 					su			shareloan_turnover		, detail

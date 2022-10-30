@@ -6,10 +6,7 @@
 	*TAX REGISTRY DATASET SHARED BY THE GOVERNMENT OF KOSOVO - > FORMAL FIRMS
 	
 	/*
-		
-		In the following code, I do not exclude any outliers in terms of total sales, number of employees, sales per employee.
-
-		
+		In the following code, I do not exclude any outliers in terms of total sales, number of employees, sales per employee.		
 	*/
 	
 		**
@@ -17,12 +14,13 @@
 		import 	delimited using "$data\raw\Tax Registry.csv", clear 
 		
 		//The dataset is a panel -> fuid (firm identification) and period (year in the Tax Registry)
-		
+		br cd_10	cd_17	cd_28	cd_66	cd_74	cd_77	cd_78
 			**
 			*Section of activities, employees and exports amount
 			*---------------------------------------------------------------------------------------------------------------------------------->>
-			rename 	(vat_11 		activitydivision activitysection numberofemployedpersons) ///
-					(exports_amount	divisionid		 sectionid        employees				) 
+			rename 	(vat_11 		activitydivision activitysection numberofemployedpersons cd_74				) ///
+					(exports_amount	divisionid		 sectionid        employees				 operational_profit ) 
+
 
 			**
 			*Total imports
@@ -46,9 +44,41 @@
 			replace section 		= "WHOLESALE AND RETAIL TRADE; REPAIR OF MOTOR VEHICLES AND MOTORCYCLES" if  section 		== "" 		 	& (sectionid == "XX" 	& activityid == "4754")
 			replace sectionid 		= "G" 																	 if (sectionid 		== "XX" 		& activityid == "4754")
 			
+		
+			
 			destring activityid divisionid, replace
 			labmask	 activityid			, values(activity)
 			labmask  divisionid			, values(division)
+			gen sec_activity = ""
+			
+			replace sec_activity = "Tertiary" 		if section == "WHOLESALE AND RETAIL TRADE; REPAIR OF MOTOR VEHICLES AND MOTORCYCLES"
+			replace sec_activity = "Tertiary" 		if section == "ACCOMMODATION AND FOOD SERVICE ACTIVITIES"
+			replace sec_activity = "Quaternary" 	if section == "PROFESSIONAL, SCIENTIFIC AND TECHNICAL ACTIVITIES"
+			replace sec_activity = "Secondary" 		if section == "MANUFACTURING"
+			replace sec_activity = "Primary" 		if section == "MINING AND QUARRYING"
+			replace sec_activity = "Tertiary" 		if section == "OTHER SERVICE ACTIVITIES"
+			replace sec_activity = "Tertiary" 		if section == "FINANCIAL AND INSURANCE ACTIVITIES"
+			replace sec_activity = "Secondary" 		if section == "CONSTRUCTION"
+			replace sec_activity = "Tertiary" 		if section == "INFORMATION AND COMMUNICATION"
+			replace sec_activity = "Tertiary" 		if section == "TRANSPORTATION AND STORAGE"
+			replace sec_activity = "Tertiary" 		if section == "ADMINISTRATIVE AND SUPPORT SERVICE ACTIVITIES"
+			replace sec_activity = "Quaternary" 	if section == "EDUCATION"
+
+			replace sec_activity = "Tertiary" 		if section == "HUMAN HEALTH AND SOCIAL WORK ACTIVITIES"
+			replace sec_activity = "Primary" 		if section == "AGRICULTURE, FORESTRY AND FISHING"
+			replace sec_activity = "Tertiary" 		if section == "ARTS, ENTERTAINMENT AND RECREATION"
+			replace sec_activity = "Tertiary" 		if section == "PUBLIC ADMINISTRATION AND DEFENCE; COMPULSORY SOCIAL SECURITY"
+			replace sec_activity = "Tertiary" 		if section == "REAL ESTATE ACTIVITIES"
+			replace sec_activity = "" 				if section == "NA"
+			replace sec_activity = "Secondary" 		if section == "WATER SUPPLY; SEWERAGE, WASTE MANAGEMENT AND REMEDIATION ACTIVITIES"
+			replace sec_activity = "Secondary" 		if section == "ELECTRICITY, GAS, STEAM AND AIR CONDITIONING SUPPLY"
+			replace sec_activity = "Tertiary" 		if section == "ACTIVITIES OF HOUSEHOLDS AS EMPLOYERS; U0NDIFFERENTIATED GOODS- AND SERVICES-PRODUCING ACTIVITIES OF HOUSEHOLDS FOR OWN USE"
+
+			gen 	sec_activityid = 1 if sec_activity == "Primary"
+			replace sec_activityid = 2 if sec_activity == "Secondary"
+			replace sec_activityid = 3 if sec_activity == "Tertiary"
+			replace sec_activityid = 4 if sec_activity == "Quaternary"
+			labmask   sec_activityid			, values(sec_activity)
 			drop 	 activity division
 			*---------------------------------------------------------------------------------------------------------------------------------->>
 
@@ -66,7 +96,6 @@
 			
 			**Lots of 0s and missings. Check the variable "sme"
 			*---------------------------------------------------------------------------------------------------------------------------------->>
-			
 			
 			
 			**

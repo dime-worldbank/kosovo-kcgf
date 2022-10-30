@@ -24,9 +24,20 @@
 	**
 	*Statistics for blogpost
 	{
+	
+		use "$data\final\firm_year_level.dta" 	if period == 2018 & active == 1, clear
+		tab sme has_credit_history, mis
+	
+	
 		use "$data\final\firm_year_level.dta" 	if period == 2015 & active == 1, clear	//2015, prior to the launch of KCGF
 		count
 		tab sme, mis
+
+		
+		use "$data\final\firm_year_level.dta" 	if period == 2018 & active == 1, clear	
+		count
+		tab sme, mis
+		
 		
 		**
 		*% of firms with access to credit
@@ -59,13 +70,10 @@
 		*Loan duration according to firms size. 
 		bys size: su duration 					,detail
 		su 			 duration 					if inlist(sme, "c.50-249", "d.250+"),detail
-
-		
-
 	}
 	*________________________________________________________________________________________________________________________________*
 		
-
+	
 	
 	
 	*--------------------------------------------------------->>>
@@ -466,6 +474,7 @@
 	{
 		import 		delimited using "$data\final\potential_borrowers_top10_vars.csv", clear
 			rename probability prob_model2
+			keep if period == 2018
 			tempfile	 top10
 			save 		`top10'
 		
@@ -522,7 +531,8 @@
 
 		**
 		eststo clear
-		bys  type_firm_panel: eststo:  estpost sum employees turnover_r productivity_r wages_worker_r export_tx import_tx firms_age has_credit_history
+		keep if sec_activityid == 3
+		bys  type_firm_panel: eststo:  estpost sum employees turnover_r productivity_r wages_worker_r firms_age has_credit_history
 		esttab using "$output/tables/ Firms’ characteristics by access to credit_2018.csv", replace  cells("mean sd min max") nodepvar    
 
 		
@@ -619,7 +629,6 @@
 		*----------------------------------------------------------------------------------------------------------------------------*
 		use 		"$data\final\firm_year_level.dta" if inlist(period, 2018,2017) & active == 1, clear
 		*----------------------------------------------------------------------------------------------------------------------------*
-		
 		**
 		**
 		gen 		id = 1
@@ -646,7 +655,7 @@
 		**
 		**
 		graph bar (asis)share shareNA ,  bar(1, color(navy) fintensity(inten50)) bar(2, color(gs18) fintensity(inten70)) 				///
-		over(emplo, sort() label(labsize(medium) angle(90))) stack 																		///
+		over(employees, sort() label(labsize(medium) angle(90))) stack 																		///
 			blabel(bar, position(outside) orientation(horizontal) size(medsmall) color(black) format (%4.1fc))   						///
 			ytitle("% firms", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc) )  					///
 			yscale(line ) 																												///
@@ -881,7 +890,7 @@
 			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery turnover_r					if Product == "Total"
 			
 			**
-			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery				    if Product != "Total" & period == 2021
+			br		period  loanamount_r id  average_loan_r irate_nominal total_interest collateralvalue_r duration shareloan_turnover economic_recovery				    		if Product != "Total" & period == 2021
 		
 	}	
 			
@@ -1055,13 +1064,13 @@
 			gen 	micro 	= (size_kcgf == 1)*100
 			gen 	small 	= (size_kcgf == 2)*100
 			gen 	medium 	= (size_kcgf == 3)*100
-			replace micro 	= . if size_kcgf != 1
-			replace small  	= . if size_kcgf != 2
-			replace medium  = . if size_kcgf != 3
+			*replace micro 	= . if size_kcgf != 1
+			*replace small  = . if size_kcgf != 2
+			*replace medium = . if size_kcgf != 3
 
 			rename GuaranteePercentageRequested guarantee
 
-			foreach var of varlist turnover_r productivity_r  collateralvalue_r guarantee irate_nominal duration {
+			foreach var of varlist turnover_r productivity_r  collateralvalue_r guarantee irate_nominal duration employees {
 				**
 				if "`var'" == "turnover_r" | "`var'" == "productivity_r" | "`var'" == "collateralvalue_r" {
 				replace `var' = `var'/1000
@@ -1081,7 +1090,7 @@
 			}
 			
 			**	
-			iebaltab   *micro *small *medium, format(%12.2fc) grpvar(Product) save("$output/tables/Balance test between KCGF Regular and Economic Recovery Package Windows.xlsx") 	rowvarlabels replace 
+			iebaltab   *micro *small *medium, cov(sectionid) format(%12.2fc) grpvar(Product) save("$output/tables/Balance test between KCGF Regular and Economic Recovery Package Windows.xlsx") 	rowvarlabels replace 
 	}
 	*________________________________________________________________________________________________________________________________*
 	
@@ -1136,6 +1145,8 @@
 		**
 		use "$data\inter\KCGF.dta" 				if period == 2021 & LoanStatus != "Canceled" & inlist(size_kcgf, 1,2,3), clear	//not including large companies
 	
+		drop if inlist(FinancialInstitution,"Kreditimi Rural i Kosoves","KEP Trust")
+	
 		**
 		collapse (median)loanamount_r irate_nominal, by( Product)
 		egen cod_prod = group(Product)
@@ -1171,6 +1182,11 @@
 			
 			
 			
+			
+			
+			
+			
+			/*
 	
 	use   "$data\inter\KCGF.dta" if period == 2021 & LoanStatus != "Canceled" & inlist(size_kcgf, 1,2,3), clear	//not including large companies
 
