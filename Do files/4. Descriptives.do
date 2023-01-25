@@ -24,25 +24,31 @@
 	**
 	*Statistics for blogpost
 	{
-	
+	    
 		use "$data\final\firm_year_level.dta" 	if period == 2018 & active == 1, clear
 		tab sme has_credit_history, mis
 	
 	
+		**
+		*Share of small firms, 2015
 		use "$data\final\firm_year_level.dta" 	if period == 2015 & active == 1, clear	//2015, prior to the launch of KCGF
 		count
 		tab sme, mis
 
 		
+		**
+		*Share of small firms, 2018
 		use "$data\final\firm_year_level.dta" 	if period == 2018 & active == 1, clear	
 		count
 		tab sme, mis
+		tab sme if (turnover_r_all >= 0 & turnover_r_all != .) | formal == 0, mis
 		
 		
 		**
 		*% of firms with access to credit
 		bys sme: su has_loan															//% of loans by firms size.								
 		su  		has_loan 					if inlist(sme, "c.50-249", "d.250+")	//medium and large firms with loans
+		
 		
 		**
 		*Productivity 
@@ -51,6 +57,7 @@
 		
 		**
 		*Percentage of these active firms that ended up stopping their operations after 2015
+		use "$data\final\firm_year_level.dta" 	if period == 2015 & active == 1, clear	
 		bys sme: su willclose_after2015 
 		su  		willclose_after2015  		if inlist(sme, "c.50-249", "d.250+"), detail
 		
@@ -73,7 +80,6 @@
 	}
 	*________________________________________________________________________________________________________________________________*
 		
-	
 	
 	
 	*--------------------------------------------------------->>>
@@ -119,6 +125,225 @@
 			iebaltab turnover_r employees productivity_r irate_nominal if size_kcgf == 2,  format(%12.0fc %12.2fc) grpvar(base) save("$output/tables/Balance Test Tax Registry KCGF_small_firms.xls") 	rowvarlabels replace 
 	}
 	
+	
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*Descriptive statistics for the mission
+	{	
+		
+	*--------------------------------------------------------->>>
+	**
+	*Percentage of firms with turnover that report profit 
+	use 	"$data\final\firm_year_level.dta" if active == 1, clear
+		keep 	if turnover_r_all != 0
+		gen 	report_profit =  profit_r != .
+		collapse (mean) report_profit, by(period)
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*Average turnover, number of employees and firms that do not report the number of employees. 
+	use "$data\final\firm_year_level.dta" if active == 1, clear
+		tab period formal
+		bys period: su turnover_r,detail
+		bys period: su employees,detail
+		
+		tab period if formal == 1
+		tab period if formal == 1 & employees ==.
+		di 9327/38821  //24% did not report this information in 2018.
+		
+		
+	*--------------------------------------------------------->>>
+	**
+	*Number of loan operations in 2018 and number of firms. operations> number of firms because there are firms with more than one loan. 
+	use "$data\inter\Credit Registry.dta", clear
+	count
+	codebook fuid if period == 2018
+	
+		
+	*--------------------------------------------------------->>>
+	**
+	*46% of the small firms in 2018 were created after 2010.
+	use "$data\final\firm_year_level.dta" 	if  active == 1 & period == 2018 & group_sme == 2 &turnover_r_all != 0, clear
+		tab birthyear	
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*For firms with loans approved in 2018, what is the percentage of them with credit history.
+	use 	"$data\final\firm_year_level.dta" if active == 1 & period == 2018, clear	
+	tab group_sme has_credit_history if has_loan == 1
+	di 1907/7724
+	di 245/1906
+	tab has_loan if group_sme == 1 & has_credit_history==0
+	tab group_sme has_credit_history
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*Percentage of loans by economic sector of activity.
+	use 	"$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2018) & sec_activityid != . & group_sme!= 5, clear	
+	replace group_sme = 3 if group_sme == 4
+	collapse (mean) has_loan, by(sec_activityid group_sme)
+			
+
+	**
+	*Comparing micro-firms and small/medium/large firms controlling for sector of activity. 
+	*--------------------------------------------------------->>>
+	use 	"$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2018) & !missing(sectionid), clear
+	iebaltab turnover_r  productivity_r nocredit_history avgrowth_productivity_r avgrowth_employees avgrowth_turnover_r,  cov(sectionid) format(%12.0fc %12.2fc) grpvar(group_sme) save("$output/tables/Comparing micro-firms with larger firms_2018.xls") 	rowvarlabels replace 
+	}
+	*________________________________________________________________________________________________________________________________*
+
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*Economic sector of activity by size. 
+	{
+	use 	"$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2018) & turnover_r_all != 0, clear
+		gen id = 1
+		replace group_sme = 3 if group_sme == 4
+		keep if inrange(sec_activityid,1,4)
+		label drop group_sme
+		label define group_sme 1 "Micro" 2 "Small" 3 "Medium/Large" 
+		label val group_sme group_sme
+		collapse (sum)id,by(sec_activityid period group_sme )
+		reshape wide id, i(period group_sme ) j(sec_activityid)
+			**
+			graph pie id1 id2 id3 id4, by(group_sme,  note("") graphregion(color(white)) cols(3))    ///
+			pie(1, explode  color(navy*0.9)) pie(2, explode  color(cranberry*0.6))  pie(3, explode  color(gs12))  pie(4, explode  color(olive_teal*0.5)) pie(5, explode color(gs12)) pie(6, explode color(cranberry*0.6)) ///
+			plabel(_all percent,   						 gap(-10) format(%2.0fc) size(medsmall)) 												///
+			legend(order(1 "Primary" 2 "Secondary" 3 "Tertiary" 4 "Quaternary") cols(4) pos(12) region(lstyle(none) fcolor(none)) size(large)) ///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 					 			///
+			plotregion(color(white)  fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 						 			///
+			note("", span color(black) fcolor(background) pos(7) size(small))																	///
+			ysize(4) xsize(8) 	
+			graph export "$output/figures/sector_activity.pdf", as(pdf) replace	
+			graph export "$output/figures/sector_activity.emf", as(emf) replace	
+	}
+	*________________________________________________________________________________________________________________________________*
+
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*% of firms with Loans over the years.
+	{
+	use 	"$data\final\firm_year_level.dta" if active == 1 & inlist(period, 2014, 2010, 2018), clear	
+	collapse (mean)has_loan, by(period group_sme)	
+	replace has_loan = has_loan*100
+	reshape wide has_loan, i(period) j(group_sme)
+
+			graph bar (asis)has_loan1 has_loan2 has_loan3 has_loan4, bargap(-30) bar(1, color(olive_teal*0.8)) bar(2, color(orange*0.5) ) bar(3, color(emidblue) ) bar(4, color(gs12) ) 	///
+			over(period, sort() label(labsize(medium) ) ) 																///
+			blabel(bar, position(outside) orientation(horizontal) size(medium) color(black) format (%4.0fc))   								 	///
+			ytitle("% firms", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   					///
+			yscale(off) ///
+			legend(order(1  "Micro"  2 "Small" 3 "Medium"  4 "Large") region(lwidth(none) color(white) fcolor(none)) cols(4) size(medlarge) position(12)) 		///	
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 		///
+			ysize(4) xsize(4) 																						
+		local nb =`.Graph.plotregion1.barlabels.arrnels'
+		di `nb'
+		forval i = 1/`nb' {
+		  di "`.Graph.plotregion1.barlabels[`i'].text[1]'"
+		  .Graph.plotregion1.barlabels[`i'].text[1]="`.Graph.plotregion1.barlabels[`i'].text[1]'%"
+		}
+		.Graph.drawgraph
+		graph export "$output\figures\loan-year.pdf", as(pdf) replace	
+	}	
+	*________________________________________________________________________________________________________________________________*
+
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	**Percentage of firms by size within the years - only firms with a non-zero turnover.
+	{
+	use "$data\final\firm_year_level.dta" if  active == 1 & group_sme != 5 & turnover_r_all != 0, clear
+		gen 	id = 1
+		replace group_sme = 3 if group_sme == 4
+		collapse (sum)id, by(group_sme period)
+		bys		period: egen total = sum(id)
+		gen 	share = (id/total)*100
+		format  share %12.1fc
+		keep if inlist(period,2010,2012,2014,2016,2018)
+		keep 	share period group_sme
+		reshape wide share, i(period) j(group_sme)
+
+		graph bar (asis)share1 share2 share3, bargap(-30) bar(1, color(olive_teal*0.8)) bar(2, color(orange*0.5) ) bar(3, color(emidblue) ) 	///
+		over(period, sort() label(labsize(medium) ) ) 																							///
+		blabel(bar, position(outside) orientation(horizontal) size(medium) color(black) format (%4.1fc))   								 		///
+		ytitle("% firms", size(large)) ylabel(, nogrid labsize(small) gmax angle(horizontal) format (%4.0fc))   								///
+		yscale(off) ///
+		legend(order(1  "Micro"  2 "Small" 3 "Medium/Large"  ) region(lwidth(none) color(white) fcolor(none)) cols(3) size(medlarge) position(12)) 		///	
+		graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 					///
+		plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 							 					///
+		ysize(4) xsize(4) 																						
+		local nb =`.Graph.plotregion1.barlabels.arrnels'
+		di `nb'
+		forval i = 1/`nb' {
+		  di "`.Graph.plotregion1.barlabels[`i'].text[1]'"
+		  .Graph.plotregion1.barlabels[`i'].text[1]="`.Graph.plotregion1.barlabels[`i'].text[1]'%"
+		}
+		.Graph.drawgraph
+		graph export "$output\figures\micro-year.pdf", as(pdf) replace	
+	}
+	*________________________________________________________________________________________________________________________________*
+	
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*
+	*We observe a decrease in the percentage of micro firms over the years. Are these micro-firms turning into small firms?
+	{
+	use "$data\final\firm_year_level.dta" 	if  active == 1 & group_sme == 1 & period == 2010 & turnover_r_all != 0, clear //micro firms in 2010 with a non-zero turnover. 
+		keep 	fuid
+		tempfile temp
+		save 	`temp'
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*
+	use 	"$data\final\firm_year_level.dta" , clear
+		merge 	m:1 fuid using `temp', keep(3) nogen
+		gen 	fechou = 1 if deathyear != . & period == 2010
+		keep if period == 2018 | period == 2010
+		sort 	fuid period
+		gen 	aumentou_tamanho = .
+		replace	aumentou_tamanho = 1 if period == 2010 & fechou !=1 & group_sme[_n+1] > 1 & group_sme != 5 & fuid[_n] == fuid[_n+1]
+		gen		 continuou_micro = 1 if fechou == . & aumentou_tamanho == .
+		keep 	if period == 2010
+		gen 	id= 1
+		collapse (sum) aumentou_tamanho fechou continuou_micro id, by(period)		//what happen to these micro firms that we identified in 2010?
+	}
+	*________________________________________________________________________________________________________________________________*
+	
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	*Exit rate by size. 
+	{
+		use "$data\final\firm_year_level.dta" if period == 2015 & main_dataset == 1 & active == 1 & inlist(sme, "a.1-9", "b.10-49", "c.50-249"), clear
+			graph pie notclose_after2015 willclose_after2015 , by(group_sme,    note("") legend(off) graphregion(color(white)) cols(3))  ///
+			pie(1, explode  color(gs14)) pie(2, explode color(red))  ///
+			plabel(_all percent,   						 gap(-10) format(%2.0fc) size(medsmall)) 											///
+			plabel(2 "Close",   						 gap(2)   format(%2.0fc) size(large)) 												///
+			plabel(1 "Remain open",    						 gap(2)   format(%2.0fc) size(large)) 											///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 					 		///
+			plotregion(color(white)  fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 						 		///
+			note("", span color(black) fcolor(background) pos(7) size(small))																///
+			ysize(4) xsize(10) 	
+			graph export "$output/figures/exit_by_size.pdf", as(pdf) replace	
+	}
+	*________________________________________________________________________________________________________________________________*
+			
 		
 		
 	*--------------------------------------------------------->>>
@@ -139,8 +364,8 @@
 			**
 			tab 	sme
 			
-			drop if group_sme == 5
-			iebaltab turnover_r employees productivity_r willclose_after2015 nocredit_history,  format(%12.0fc %12.2fc) grpvar(group_sme) save("$output/tables/Firms' characteristics by size_2015.xls") 	rowvarlabels replace 
+			drop if group_sme == 5 | sectionid == .
+			iebaltab turnover_r employees productivity_r willclose_after2015 nocredit_history, cov(sectionid)  format(%12.0fc %12.2fc) grpvar(group_sme) save("$output/tables/Firms' characteristics by size_2015.xls") 	rowvarlabels replace 
 
 			**
 			/*
@@ -217,10 +442,6 @@
 			
 			collapse (sum) id has_otherloan, by(group_sme period)
 			gen 		share_loans = (has_otherloan/ id)*100
-			
-			label define group_sme 1 "Micro" 2 "Small" 3 "Medium" 4 "Large"
-			label val    group_sme group_sme
-			
 			separate share_loans, by(group_sme)
 			
 			**
@@ -323,7 +544,6 @@
 				graph export "$output/figures/ML_probability_`variable'.emf", as(emf) replace
 				graph export "$output/figures/ML_probability_`variable'.pdf", as(pdf) replace
 				}
-		
 		}
 	*________________________________________________________________________________________________________________________________*
 		
@@ -393,7 +613,7 @@
 			use 	"$data\final\firm_year_level.dta" if active == 1, clear
 					
 			**
-			*keep if inlist(sme, "a.1-9") 
+			keep if inlist(sme, "a.1-9") 
 			
 			**
 			keep if type_firm_panel == 0 | (type_firm_panel == 1 & has_loan == 1)
@@ -531,7 +751,7 @@
 
 		**
 		eststo clear
-		keep if sec_activityid == 3
+		*keep if sec_activityid == 3
 		bys  type_firm_panel: eststo:  estpost sum employees turnover_r productivity_r wages_worker_r firms_age has_credit_history
 		esttab using "$output/tables/ Firms’ characteristics by access to credit_2018.csv", replace  cells("mean sd min max") nodepvar    
 
@@ -605,8 +825,9 @@
 			label var productivity_micro 	"Productivity micro-firms, thousands EUR 2021"
 			label var productivity_small	"Productivity small-firms, thousands EUR 2021"
 			label var  wages_worker_r		"Average wage, thousands EUR 2021"
-					
-			iebaltab firms_age employees micro turnover_micro turnover_small productivity_micro productivity_small wages_worker_r import_tx export_tx had_loan_up2015 willclose_after2015 avgrowth*,  control(2) format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Firms' characteristics prior to KCGF according to their access to credit between 2016-2018.xls") 	rowvarlabels replace 
+				
+			keep if sectionid !=.
+			iebaltab firms_age employees micro turnover_micro turnover_small productivity_micro productivity_small wages_worker_r import_tx export_tx had_loan_up2015 willclose_after2015 avgrowth*,  cov(sectionid) control(2) format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Firms' characteristics prior to KCGF according to their access to credit between 2016-2018.xls") 	rowvarlabels replace 
 			
 			
 			*tabform  firms_age employees micro turnover_micro turnover_small productivity_micro productivity_small wages_worker_r import_tx export_tx had_loan_up2015 willclose_after2015 avgrowth* ///
@@ -728,7 +949,56 @@
 			graph export "$output\figures\distribution of employees according to access to credit.pdf", as(pdf) replace		
 	}	
 	
+	
+	
+	*--------------------------------------------------------->>>
+	**
+	**
+	*Distribution in the number of employees of KCGF and non kcgf loans
+	*________________________________________________________________________________________________________________________________*
+	{
+	
+		*----------------------------------------------------------------------------------------------------------------------------*
+		*----------------------------------------------------------------------------------------------------------------------------*
+		use 	"$data\final\firm_year_level.dta" if active == 1  & inlist(sme, "a.1-9", "b.10-49") & period == 2015 & employees<=30, clear		
+		*----------------------------------------------------------------------------------------------------------------------------*
+		
+			*Average number of employees by type of firm
+			bys 	type_firm_after2015: su employees , detail
 
+			
+			**
+			tw (histogram employees if type_firm_after2015 == 2, bin(15) percent color(emidblue) fintensity(50))  (histogram employees if type_firm_after2015 == 1, bin(15) percent fcolor(none) lcolor(black)),   ///
+			legend(order(1 "KCGF" 2 "Other loans") pos(12) size(large) cols(3) region(lwidth(white) lcolor(white) color(white) fcolor(white) )) 		 ///
+			ytitle("%", size(large)) ylabel(0(20)80, nogrid labsize(large) format(%12.0fc)) 						 	 ///
+			xtitle("Number employees", size(medium)) xlabel(,labsize(small) format(%12.0fc)) 				 	 ///
+			title("", pos(12) size(medsmall) color(black)) 														 ///
+			subtitle("", pos(12) size(medsmall) color(black)) 													 ///
+			text(45 18 "Median KCGF: 3 employees. 80% firms between 1 and 9", size(medium))		 			 ///
+			text(35 17 "Median other loans: 3 employees. 80% firms between 1 and 12", size(medium)) 			 ///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 	 ///
+			plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 ///
+			ysize(5) xsize(7) 																					 ///
+			note("", color(black) fcolor(background) pos(7) size(small)) 
+			graph export "$output\figures\distribution of employees according to access to credit_1.pdf", as(pdf) replace		
+				
+			
+			**
+			tw (histogram employees if type_firm_after2015 == 2, bin(15) percent color(emidblue) fintensity(50))  (histogram employees if type_firm_after2015 == 0, bin(15) percent fcolor(none) lcolor(red)),   ///
+			legend(order(1 "KCGF" 2 "No loans") pos(12) size(large) cols(3) region(lwidth(white) lcolor(white) color(white) fcolor(white) )) 		 ///
+			ytitle("%", size(large)) ylabel(0(20)80, nogrid labsize(large) format(%12.0fc)) 						 	 ///
+			xtitle("Number employees", size(medium)) xlabel(,labsize(small) format(%12.0fc)) 				 	 ///
+			title("", pos(12) size(medsmall) color(black)) 														 ///
+			subtitle("", pos(12) size(medsmall) color(black)) 													 ///
+			text(45 17 "Median KCGF: 3 employees. 80% firms between 1 and 9", size(medium))		 			 ///
+			text(35 17 "Median no loans: 1 employee. 80% firms between 1 and 5", size(medium)) 			 ///
+			graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 	 ///
+			plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	 ///
+			ysize(5) xsize(7) 																					 ///
+			note("", color(black) fcolor(background) pos(7) size(small)) 
+			graph export "$output\figures\distribution of employees according to access to credit_2.pdf", as(pdf) replace		
+	}
+	
 	
 	*--------------------------------------------------------->>>
 	**
@@ -988,8 +1258,9 @@
 		gen productivity_small 	= productivity_r 	if small == 1
 		gen turnover_small		= turnover_r 		if small == 1
 		
+		keep if sectionid != .
 		**
-		iebaltab firms_age employees micro turnover_micro turnover_small productivity_micro productivity_small wages_worker_r import_tx had_loan_up2015 willclose_after2015, stdev  format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Balance test by access to credit_2016-2018.xls") 	rowvarlabels replace 
+		iebaltab firms_age employees micro turnover_micro turnover_small productivity_micro productivity_small wages_worker_r import_tx had_loan_up2015 willclose_after2015, cov(sectionid) stdev  format(%12.0fc %12.2fc) grpvar(type_firm_after2015) save("$output/tables/Balance test by access to credit_2016-2018.xls") 	rowvarlabels replace 
 	}
 	*________________________________________________________________________________________________________________________________*
 
@@ -1088,9 +1359,11 @@
 					replace  `var' = .		if size_kcgf == `size_kcgf' & (`var' <= r(p5) |`var' >= r(p95))
 				}
 			}
+				
+			keep if Section != ""
 			
 			**	
-			iebaltab   *micro *small *medium, cov(sectionid) format(%12.2fc) grpvar(Product) save("$output/tables/Balance test between KCGF Regular and Economic Recovery Package Windows.xlsx") 	rowvarlabels replace 
+			iebaltab   *micro *small *medium, cov(format(%12.2fc) grpvar(Product) save("$output/tables/Balance test between KCGF Regular and Economic Recovery Package Windows.xlsx") 	rowvarlabels replace 
 	}
 	*________________________________________________________________________________________________________________________________*
 	
@@ -1182,11 +1455,99 @@
 			
 			
 			
+		use "$data\final\firm_year_level.dta" 		if period == 2015 & main_dataset == 1 & active == 1 & inlist(sme, "a.1-9") & turnover_r_all > 0 & turnover_r_all !=.,clear
+	
+	
+		
+	 
+			keep	if section == "ACCOMMODATION AND FOOD SERVICE ACTIVITIES" 								| ///
+					   section == "CONSTRUCTION"															| ///
+					   section == "MANUFACTURING"		| ///
+					   section == "OTHER SERVICE ACTIVITIES" | ///
+			           section == "TRANSPORTATION AND STORAGE" | ///
+			           section == "WHOLESALE AND RETAIL TRADE; REPAIR OF MOTOR VEHICLES AND MOTORCYCLES"
+					   
+					   tab section 
+					   gen id = 1
+			
+			collapse (mean)productivity_r (sum)id, by(section sectionid type_firm_after2015)
+			
+			sort sectionid
+			
+			recode sectionid (7 = 2) (13 = 3) (16 = 4) (20 = 5) (22 = 6 )
+			
+			replace productivity_r = productivity_r/1000
+			tw ///
+				(scatter productivity_r sectionid [w=id] if type_firm_after2015 ==0 , msymbol(circle_hollow) color(emidblue) msize(large))		 	///
+			||  (scatter productivity_r sectionid [w=id] if type_firm_after2015 ==1 , msymbol(circle_hollow) color(orange) msize(large))			///
+			||  (scatter productivity_r sectionid [w=id] if type_firm_after2015 ==2 , msymbol(circle_hollow) color(olive_teal*1.5) msize(large) 	///
+			xscale(r(0 8)) yscale(r(0 30))    ///
+			ytitle("Sales/employee, 2021 EUR", size(medium)) ///
+			xlabel(1 `"Food"' 2 `"Construction"' 3 `"Manufacturing"' 4 `"Other services"' 5 `""', labsize(small)) ///
+			)
+			///
+			
+
 			
 			
 			
 			
-			/*
+			
+			
+			
+			ysca(axis(1) r(500 1800)) ylab(1300(100)1800,  angle(horizontal) labsize(small) format(%4.0f) axis(1)) 					 		///
+	ysca(axis(2) r(300 1300))  ylab(300(200)900,     angle(horizontal) labsize(small) format(%4.0fc) axis(2))					 	///
+	xsca( r(2017 2022)   )     xlab(2018(1)2021,     labsize(small) format(%4.0fc)) 					///
+	legend(cols(2) size(medsmall) region(lwidth(none) color(none)) pos(6))  			 				/// 		
+	title("", pos(12) size(medsmall) color(black)) 														///     
+	ytitle("Number of ASAs", axis(1) size(small) color(black))											/// 
+	ytitle("Life-time expenditures, in thousands 2020 USD", axis(2) size(small) color(black)) 				///
+	xtitle("Fiscal year", size(small))  																///
+	graphregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white))	///
+	plotregion( color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) 	///
+	ysize(5) xsize(7)							 														///
+	yline(3100, axis(1) lcolor(red))						  											///
+	note("Source: Operations Monitoring.", span color(black) fcolor(background) pos(7) size(small)))
+	graph export "$figures/Number of ASAs and Life time expenditures.pdf", as(pdf) replace		
+	
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+	
+			
+			graph hbox employees,over(type_firm_after2015) over(sec_activityid)
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+	/*
 	
 	use   "$data\inter\KCGF.dta" if period == 2021 & LoanStatus != "Canceled" & inlist(size_kcgf, 1,2,3), clear	//not including large companies
 

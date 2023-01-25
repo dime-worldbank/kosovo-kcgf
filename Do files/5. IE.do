@@ -110,7 +110,7 @@
 
 	foreach model in ols lasso forest xgboost 	{  //ols lasso ridge  forest xgboost
 		
-		foreach comparison in  1  					 			{	//0 1 //1	//0-> firms with no loans, 1-> firms with loans
+		foreach comparison in 0 1  					 			{	//0 1 //1	//0-> firms with no loans, 1-> firms with loans
 			
 			**
 			*1* PSM
@@ -366,8 +366,9 @@
 		
 		foreach comparison in 0 1 {
 			use "$data\inter\matching_models\matching_xgboost_`comparison'.dta", clear  
+			keep if number_loans_up2015 <=8
 				local xvar = 1
-				foreach variable in employees qua_productivity_r qua_turnover_r number_loans_up2015 {
+				foreach variable in employees qua_productivity_r2015 qua_turnover_r2015 number_loans_up2015 {
 					levelsof `variable', local(`variable'_list) 
 					foreach code in ``variable'_list' {
 						ci means xb if `variable' == `code'
@@ -377,13 +378,14 @@
 				}
 		}		
 		
+		
 		clear 
 		svmat results
 		drop in 1
 		rename (results1-results6) (variable comparison code xb lower upper)
 				
-		foreach variable in 1 2 3 4 {
-	  		foreach comparison in 0 1  {
+		foreach variable in 4 {
+	  		foreach comparison in 0  1 {
 			     
 				 
 				if `variable' == 1   {
@@ -405,20 +407,22 @@
 				local inter 	= 0.03
 				local max 		= 0.15			
 				}
+				
 				if `variable' == 4   {
 				local xtitle = "Number of loans between 2010-2015"
 				
 					if `comparison' == 0 {
 					local min 		= 0
 					local inter 	= 0.10
-					local max 		= 0.50	
+					local max 		= 0.80	
 					}
 					if `comparison' == 1 {
 					local min 		= 0
 					local inter 	= 0.10
-					local max 		=  0.50	
+					local max 		=  0.80	
 					}				
 				}
+				
 				if `comparison' == 1 local title = "Other loans & KCGF loans"
 				if `comparison' == 0 local title = "No loans & KCGF loans"	
 				
@@ -433,7 +437,7 @@
 				///
 				xlabel(, angle(360) labsize(medium)) ///
 				///
-				title("`title'", pos(12) size(large) color(black)) ///
+				title("", pos(12) size(large) color(black)) ///
 				///
 				subtitle(, pos(12) size(medsmall) color(black)) ///
 				///
@@ -441,13 +445,16 @@
 				///
 				plotregion(color(white) fcolor(white) lcolor(white) icolor(white) ifcolor(white) ilcolor(white)) ///
 				///
-				legend(order(1 "95% CI"  2 "Probability of treatment" ) region(lwidth(none)) cols(1) size(medium) position(0) bplacement(seast)) ///
+				legend(order(1 "95% CI"  2 "Probability of treatment" ) region(lwidth(none)) cols(1) size(medium) position(12) bplacement(seast)) ///
 				///
 				ysize(5) xsize(6) saving(a`variable'`comparison'.gph, replace)	 ///
 				///
 				note("", color(black) fcolor(background) pos(7) size(small))) 
+				graph export "$output\figures\psm_`variable'`comparison'.pdf", as(pdf) replace
+
 			}
 		}
+			
 			graph combine a10.gph a11.gph, xsize(10) ysize(5) title("Probability of treatment and number of employees", color(black)) graphregion(fcolor(white)) 
 			graph export "$output\figures\psm versus employees.png", as(png) replace
 			graph combine a20.gph a21.gph, xsize(10) ysize(5) title("Probability of treatment and deciles of sales per employee", color(black)) graphregion(fcolor(white)) 

@@ -12,8 +12,8 @@
 			
 			
 			
-		Dataset shared by KCGF-						 -> I replaced  duration and interest rates by missing if they are in the bottom 5% or top 95%
-													 -> I calculated the loan amount divided by the turnover and replace by missing the bottom 5% or top 95% (It does not make sense the firm get a loan that is more than double of their turnover. )
+		Dataset shared by KCGF-						 -> I replaced  duration and interest rates by missing if they are equal to 0. I DID NOT REPLACE BY MISSING BOTTOM 5 AND TOP 95/
+													 -> I calculated the loan amount divided by the turnover and replaced this variable with missing the bottom 5% or top 95% (It does not make sense the firm get a loan that is more than double of their turnover. )
 													 -> I replaced the variable employees by missing if it is = 0
 		
 		*/
@@ -443,16 +443,18 @@
 				
 				su duration,detail		//80 months is the max duration
 				
-				//calculating the duration for loans in which we have maturity date and approval date
+				//for cases that duration is missing, lets calculate the duration for loans in which we have maturity date and approval date
 				replace 	duration 	  = (maturity - approvaldate)/30 			if duration == . & !missing(maturity) & !missing(approvaldate) & (maturity - approvaldate)/30 < r(max) & (maturity - approvaldate)/30 > r(min) & (maturity - approvaldate)/30 > 0 
-						
+				
+				
 				**
 				*Payment of interest rates
 				gen 	 installment = loanamount_r/duration
 
+				
 				foreach size_creditdata in 1 2 3 4 5 {
-					su 		installment											if size_creditdata == `size_creditdata', detail
-					replace	installment	= . 									if size_creditdata == `size_creditdata' & (installment	 < r(p5) | installment	 > r(p95))
+					su 		installment												if size_creditdata == `size_creditdata', detail
+					replace	installment	= . 										if size_creditdata == `size_creditdata' & (installment	 < r(p5) | installment	 > r(p95))
 				}
 
 				
@@ -600,13 +602,14 @@
 					**
 					*Outliers in terms of interest rates and duration according to firms' size
 					*---------------------------------------------------------------------------------------------------------------------------------->>
-					
+					/*
 					foreach size_kcgf  in 1 2 3 4 5 {
 						su 		irate_nominal 			if size_kcgf == `size_kcgf', detail
 						replace	irate_nominal = . 		if size_kcgf == `size_kcgf' & (irate_nominal < r(p5) | irate_nominal > r(p95)) & r(N) > 10
 						su 		duration 				if size_kcgf == `size_kcgf', detail
 						replace duration 	  = . 		if size_kcgf == `size_kcgf' & (duration 	 < r(p5) | duration	     > r(p95)) & r(N) > 10			
 					}
+					*/
 					*---------------------------------------------------------------------------------------------------------------------------------->>
 									
 					

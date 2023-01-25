@@ -9,6 +9,15 @@
 		In the following code, I do not exclude any outliers in terms of total sales, number of employees, sales per employee.		
 	*/
 	
+		forvalues year = 2011(1)2021{
+			import 	excel using "$data\raw\BB.xlsx", sheet(`year') clear 
+			
+			tempfile `year'
+			save    ``year''
+		}
+			
+			
+	
 		**
 		*------------------------------------------------------------------------------------------------------------------------------------->>
 		import 	delimited using "$data\raw\Tax Registry.csv", clear 
@@ -43,8 +52,6 @@
 			replace division 		= "Retail trade, except of motor vehicles and motorcycles" 				 if  division 		== "Unknown" 	& (sectionid == "XX" 	& activityid == "4754")
 			replace section 		= "WHOLESALE AND RETAIL TRADE; REPAIR OF MOTOR VEHICLES AND MOTORCYCLES" if  section 		== "" 		 	& (sectionid == "XX" 	& activityid == "4754")
 			replace sectionid 		= "G" 																	 if (sectionid 		== "XX" 		& activityid == "4754")
-			
-		
 			
 			destring activityid divisionid, replace
 			labmask	 activityid			, values(activity)

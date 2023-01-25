@@ -500,4 +500,6 @@
 				*compress
 				save 			"$data\final\firm_year_level.dta", replace
 		}		
-
+		
+		drop sectionid1-sectionid21 a b min_inactive max_active lag* qua* sq_*
+		export excel using "$data\final\firm_year_level.xls", replace
